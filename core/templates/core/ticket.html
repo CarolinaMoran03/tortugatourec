@@ -1,0 +1,14 @@
+{% for salida in resultados %}
+<div class="flex justify-between items-center p-4 border-b">
+    <div>
+        <h4 class="font-bold text-lg">{{ salida.tour.nombre }}</h4>
+        <div class="flex items-center gap-2 text-primary font-bold">
+            <span class="material-icons text-sm">schedule</span>
+            {{ salida.hora|time:"g:i A" }} </div>
+    </div>
+    <div class="text-right">
+        <p class="text-xs text-slate-400">{{ salida.cupos_disponibles }} espacios</p>
+        <a href="{% url 'tour_detalle' salida.tour.id %}" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm">Reservar</a>
+    </div>
+</div>
+{% endfor %}

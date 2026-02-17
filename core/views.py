@@ -1,0 +1,986 @@
+import json
+import logging
+import hmac
+import hashlib
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+import requests
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.forms import AuthenticationForm
+from django.core.mail import send_mail, EmailMessage, EmailMultiAlternatives
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.utils import timezone
+from django.http import JsonResponse, HttpResponse
+from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.db import transaction
+from .models import Destino, Tour, SalidaTour, Reserva, Pago
+from .utils import generar_ticket_pdf
+from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm
+
+logger = logging.getLogger(__name__)
+
+# ============================================
+# VISTAS PÚBLICAS
+# ============================================
+
+def home(request):
+    destinos = Destino.objects.all()
+    tours_destacados = Tour.objects.all()[:3]
+
+    context = {
+        "destinos": destinos,
+        "tours_destacados": tours_destacados,
+    }
+
+    return render(request, "core/home.html", context)
+
+def tours(request):
+    tours = Tour.objects.select_related("destino").all()
+    destinos = Destino.objects.all()
+
+    context = {
+        "tours": tours,
+        "destinos": destinos,
+    }
+    return render(request, "core/tours.html", context)
+
+def lista_tours(request):
+    destino_id = request.GET.get("destino")
+    fecha = request.GET.get("fecha")
+    personas = request.GET.get("personas")
+
+    if not (destino_id and fecha and personas):
+        return render(request, "core/lista_tours.html", {"tours_con_salidas": {}})
+
+    salidas = SalidaTour.objects.filter(
+        tour__destino_id=destino_id,
+        fecha=fecha,
+        cupos_disponibles__gte=int(personas)
+    ).select_related('tour').order_by('hora')
+
+    # Agrupamos por Tour
+    tours_con_salidas = {}
+    for s in salidas:
+        if s.tour not in tours_con_salidas:
+            tours_con_salidas[s.tour] = []
+        tours_con_salidas[s.tour].append(s)
+
+    return render(request, "core/lista_tours.html", {
+        "tours_con_salidas": tours_con_salidas,
+        "fecha_busqueda": fecha,
+        "personas": personas
+    })
+
+# ============================================
+# DETALLE DEL TOUR Y RESERVA (ACTUALIZADO)
+# ============================================
+
+def tour_detalle(request, pk):
+    tour = get_object_or_404(Tour, pk=pk)
+    # Filtrar solo salidas futuras con cupos disponibles
+    salidas = SalidaTour.objects.filter(
+        tour=tour, 
+        cupos_disponibles__gt=0,
+        fecha__gte=timezone.now().date()
+    ).order_by('fecha', 'hora')
+
+    if request.method == "POST":
+        # Verificar si es una petición AJAX
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        try:
+            salida_id = request.POST.get("salida")
+            adultos = int(request.POST.get("adultos", 0))
+            ninos = int(request.POST.get("ninos", 0))
+            nombre = request.POST.get("nombre", "")
+            telefono = request.POST.get("telefono", "")
+            identificacion = request.POST.get("identificacion", "")
+
+            # Validaciones
+            if not salida_id:
+                error_msg = "Debes seleccionar una fecha."
+                if is_ajax:
+                    return JsonResponse({'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect('tour_detalle', pk=pk)
+
+            salida = get_object_or_404(SalidaTour, id=salida_id, tour=tour)
+            total_personas = adultos + ninos
+
+            if total_personas <= 0:
+                error_msg = "Debes seleccionar al menos una persona."
+                if is_ajax:
+                    return JsonResponse({'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect('tour_detalle', pk=pk)
+
+            if not salida.hay_cupo(adultos, ninos):
+                error_msg = "No hay suficientes cupos disponibles para esta salida."
+                if is_ajax:
+                    return JsonResponse({'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect('tour_detalle', pk=pk)
+
+            # Validar datos obligatorios solo si el usuario está autenticado
+            if request.user.is_authenticated and not all([nombre, telefono, identificacion]):
+                error_msg = "Completa todos tus datos personales."
+                if is_ajax:
+                    return JsonResponse({'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect('tour_detalle', pk=pk)
+
+            # Calcular total a pagar
+            total_pagar = total_personas * tour.precio
+
+            # Crear la reserva con estado PENDIENTE (hasta que pague)
+            reserva = Reserva.objects.create(
+                usuario=request.user if request.user.is_authenticated else None,
+                salida=salida,
+                adultos=adultos,
+                ninos=ninos,
+                total_pagar=total_pagar,
+                nombre=nombre if nombre else (request.user.first_name if request.user.is_authenticated else ""),
+                apellidos="",  # Puedes agregar este campo al formulario si quieres
+                correo=request.user.email if request.user.is_authenticated else "",
+                telefono=telefono,
+                identificacion=identificacion,
+                estado="pendiente"  # IMPORTANTE: Pendiente hasta que pague
+            )
+
+            # NO descontamos cupos aquí, se descontarán después del pago
+
+            # Responder con la URL del checkout
+            if is_ajax:
+                return JsonResponse({
+                    'success': True,
+                    'reserva_id': reserva.id,
+                    'redirect_url': reverse('checkout_reserva', args=[reserva.id])
+                })
+            else:
+                messages.success(request, "Reserva iniciada. Completa el pago para confirmar.")
+                return redirect('checkout_reserva', reserva_id=reserva.id)
+
+        except Exception as e:
+            error_msg = f"Error al procesar la reserva: {str(e)}"
+            if is_ajax:
+                return JsonResponse({'error': error_msg}, status=500)
+            messages.error(request, error_msg)
+            return redirect('tour_detalle', pk=pk)
+
+    return render(request, "core/tour_detalle.html", {
+        "tour": tour,
+        "salidas": salidas,
+    })
+
+def ticket_reserva(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    return render(request, "core/ticket.html", {"reserva": reserva})
+
+def ver_ticket_pdf(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    buffer = generar_ticket_pdf(reserva)
+    return HttpResponse(buffer.getvalue(), content_type='application/pdf')
+
+# ============================================
+# CHECKOUT Y PAGO (ACTUALIZADO)
+# ============================================
+
+def checkout(request, reserva_id=None):
+    """Vista para la página de checkout/pago"""
+    
+    # Si se especifica una reserva, cargar sus datos
+    if reserva_id:
+        reserva = get_object_or_404(Reserva, id=reserva_id)
+        
+        context = {
+            'reserva': reserva,
+            'tour': reserva.salida.tour,
+            'salida': reserva.salida,
+            'destino': reserva.salida.tour.destino,
+        }
+    else:
+        # Datos de ejemplo para demo (si no hay reserva_id)
+        context = {
+            'demo': True,
+        }
+    
+    return render(request, 'core/checkout.html', context)
+
+def procesar_pago(request):
+    """Vista para procesar el pago y confirmar la reserva"""
+    if request.method == 'POST':
+        reserva_id = request.POST.get('reserva_id')
+        
+        if not reserva_id:
+            messages.error(request, 'No se encontró la reserva')
+            return redirect('tours')
+        
+        # Obtener los datos del formulario
+        nombre_titular = request.POST.get('nombre_titular')
+        email = request.POST.get('email')
+        numero_tarjeta = request.POST.get('numero_tarjeta')
+        cvv = request.POST.get('cvv')
+        
+        try:
+            reserva = get_object_or_404(Reserva, id=reserva_id)
+            
+            # Verificar que la reserva esté pendiente
+            if reserva.estado != 'pendiente':
+                messages.warning(request, 'Esta reserva ya fue procesada.')
+                return redirect('tours')
+            
+            # Aquí iría la integración con pasarela de pago real
+            # Por ahora, simulamos que el pago fue exitoso
+            
+            # Actualizar la reserva a PAGADA
+            reserva.estado = 'pagada'
+            reserva.save()
+            
+            # AHORA SÍ descontamos los cupos
+            salida = reserva.salida
+            total_personas = reserva.adultos + reserva.ninos
+            salida.cupos_disponibles -= total_personas
+            salida.save()
+            
+            # Generar y enviar ticket por email
+            try:
+                pdf_buffer = generar_ticket_pdf(reserva)
+                pdf_content = pdf_buffer.getvalue()
+                pdf_buffer.close()
+                
+                asunto = f"✅ Confirmación de Reserva #{reserva.id:06d} - TortugaTour"
+                mensaje_html = render_to_string("core/email_ticket.html", {"reserva": reserva})
+                
+                # Enviar al cliente
+                email_cliente = EmailMessage(
+                    subject=asunto,
+                    body=mensaje_html,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[reserva.correo if reserva.correo else email],
+                )
+                email_cliente.content_subtype = "html"
+                email_cliente.attach(f"Ticket_TortugaTour_{reserva.id}.pdf", pdf_content, "application/pdf")
+                email_cliente.send(fail_silently=True)
+                
+            except Exception as e:
+                print(f"Error enviando email: {e}")
+            
+            messages.success(request, '¡Pago procesado exitosamente! Tu reserva ha sido confirmada. Revisa tu email.')
+            return redirect('tours')
+            
+        except Exception as e:
+            messages.error(request, f'Error al procesar el pago: {str(e)}')
+            return redirect('checkout_reserva', reserva_id=reserva_id)
+    
+    messages.error(request, 'Método no permitido')
+    return redirect('tours')
+
+# ============================================
+# PANEL ADMINISTRATIVO
+# ============================================
+
+def es_admin(user):
+    return user.is_staff
+
+@login_required
+@user_passes_test(es_admin)
+def panel_admin(request):
+    return render(request, "core/panel/index.html")
+
+@login_required
+@user_passes_test(es_admin)
+def admin_reservas(request):
+    reservas = Reserva.objects.select_related("salida__tour").order_by("-id")
+    return render(request, "core/panel/reservas.html", {"reservas": reservas})
+
+@login_required
+@user_passes_test(es_admin)
+def cambiar_estado_reserva(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if request.method == "POST":
+        nuevo_estado = request.POST.get("estado")
+        if nuevo_estado in ["pendiente", "confirmada", "cancelada", "pagada"]:
+            reserva.estado = nuevo_estado
+            reserva.save()
+            messages.success(request, f"Reserva #{reserva.id} actualizada correctamente.")
+    return redirect("admin_reservas")
+
+@login_required
+@user_passes_test(es_admin)
+def admin_salidas(request):
+    salidas = SalidaTour.objects.select_related("tour").all()
+    return render(request, "core/panel/salidas.html", {"salidas": salidas})
+
+@login_required
+@user_passes_test(es_admin)
+def editar_salida(request, salida_id):
+    salida = get_object_or_404(SalidaTour, id=salida_id)
+    if request.method == "POST":
+        salida.cupo_maximo = int(request.POST.get("cupo_maximo"))
+        salida.cupos_disponibles = int(request.POST.get("cupos_disponibles"))
+        salida.fecha = request.POST.get("fecha")
+        salida.hora = request.POST.get("hora")
+        salida.save()
+        messages.success(request, f"La salida del {salida.fecha} ha sido actualizada.")
+        return redirect("admin_salidas")
+    return render(request, "core/panel/editar_salida.html", {"salida": salida})
+
+@login_required
+@user_passes_test(es_admin)
+def crear_salida(request):
+    tours = Tour.objects.all()
+    
+    if request.method == "POST":
+        tour_id = request.POST.get("tour")
+        fecha = request.POST.get("fecha")
+        hora = request.POST.get("hora")
+        cupo_maximo = int(request.POST.get("cupo_maximo"))
+        
+        tour = get_object_or_404(Tour, id=tour_id)
+        
+        SalidaTour.objects.create(
+            tour=tour,
+            fecha=fecha,
+            hora=hora,
+            cupo_maximo=cupo_maximo,
+            cupos_disponibles=cupo_maximo
+        )
+        
+        messages.success(request, "¡Salida programada correctamente!")
+        return redirect("admin_salidas")
+
+    return render(request, "core/panel/crear_salida.html", {"tours": tours})
+
+@login_required
+@user_passes_test(es_admin)
+def destinos(request):
+    destinos_list = Destino.objects.all().order_by('-id')
+    
+    if request.method == 'POST':
+        form = DestinoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "¡Destino agregado con éxito!")
+            return redirect('destinos')
+    else:
+        form = DestinoForm()
+            
+    return render(request, 'core/panel/destinos.html', {
+        'destinos': destinos_list,
+        'form': form
+    })
+
+@login_required
+@user_passes_test(es_admin)
+def editar_destino(request, pk):
+    destino = get_object_or_404(Destino, pk=pk)
+    if request.method == 'POST':
+        form = DestinoForm(request.POST, instance=destino)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Destino actualizado con éxito.")
+            return redirect('destinos')
+    else:
+        form = DestinoForm(instance=destino)
+    return render(request, 'core/panel/editar_destino.html', {'form': form, 'destino': destino})
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_destino(request, pk):
+    destino = get_object_or_404(Destino, pk=pk)
+    if request.method == 'POST':
+        destino.delete()
+        messages.success(request, "Destino eliminado correctamente.")
+    return redirect('destinos')
+
+@login_required
+@user_passes_test(es_admin)
+def admin_tours(request):
+    tours_list = Tour.objects.all().order_by('-id')
+    destinos_list = Destino.objects.all()
+    
+    if request.method == 'POST':
+        form = TourForm(request.POST)
+        if form.is_valid():
+            tour = form.save(commit=False)
+            tour.cupos_disponibles = tour.cupo_maximo
+            tour.save()
+            messages.success(request, f"Tour '{tour.nombre}' creado exitosamente.")
+            return redirect('admin_tours')
+    else:
+        form = TourForm()
+
+    return render(request, 'core/panel/tours.html', {
+        'tours': tours_list,
+        'form': form,
+        'destinos': destinos_list
+    })
+
+
+@login_required
+@user_passes_test(es_admin)
+def editar_tour(request, pk):
+    tour = get_object_or_404(Tour, pk=pk)
+    if request.method == "POST":
+        form = TourForm(request.POST, instance=tour)
+        if form.is_valid():
+            tour_actualizado = form.save(commit=False)
+            # Keep available seats within the updated max seats.
+            if tour_actualizado.cupos_disponibles > tour_actualizado.cupo_maximo:
+                tour_actualizado.cupos_disponibles = tour_actualizado.cupo_maximo
+            tour_actualizado.save()
+            messages.success(request, f"Tour '{tour_actualizado.nombre}' actualizado correctamente.")
+            return redirect("admin_tours")
+    else:
+        form = TourForm(instance=tour)
+
+    return render(request, "core/panel/editar_tour.html", {"form": form, "tour": tour})
+
+# ============================================
+# AUTENTICACIÓN
+# ============================================
+
+def registro(request):
+    if request.method == 'POST':
+        form = RegistroTuristaForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, f"¡Bienvenido a TortugaTour, {user.first_name}!")
+            return redirect('home')
+    else:
+        form = RegistroTuristaForm()
+    return render(request, 'registration/registro.html', {'form': form})
+
+def vista_login(request):
+    """Maneja el inicio de sesión y la redirección al tour original."""
+    next_url = request.GET.get('next', 'home')
+    
+    if request.method == 'POST':
+        form = AuthenticationForm(data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            messages.success(request, f"¡Qué bueno verte de nuevo, {user.first_name}!")
+            return redirect(request.POST.get('next', 'home'))
+    else:
+        form = AuthenticationForm()
+    
+    return render(request, 'registration/login.html', {
+        'form': form,
+        'next': next_url
+    })
+
+def vista_logout(request):
+    """Cierra la sesión y redirige a la página de inicio."""
+    logout(request)
+    messages.info(request, "Has cerrado sesión correctamente.")
+    return redirect('home')
+
+# ============================================
+# OTRAS PÁGINAS
+# ============================================
+
+def nosotros(request):
+    return render(request, "core/nosotros.html")
+
+def contacto(request):
+    if request.method == "POST":
+        form = ContactoForm(request.POST)
+        if form.is_valid():
+            datos = form.cleaned_data
+            
+            subject = f"✨ Nuevo Contacto: {datos['asunto']} - {datos['nombre']}"
+            html_content = render_to_string('emails/aviso_contacto.html', {
+                'nombre': datos['nombre'],
+                'email_usuario': datos['email'],
+                'asunto_elegido': datos['asunto'],
+                'mensaje_texto': datos['mensaje'],
+            })
+            text_content = strip_tags(html_content)
+
+            try:
+                msg = EmailMultiAlternatives(
+                    subject, 
+                    text_content, 
+                    settings.DEFAULT_FROM_EMAIL, 
+                    ['tu-correo@gmail.com']
+                )
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+
+                messages.success(request, "¡Mensaje enviado con éxito!")
+                return redirect('contacto')
+            except Exception as e:
+                messages.error(request, "Error al enviar el correo.")
+    else:
+        form = ContactoForm()
+    
+    return render(request, "core/contacto.html", {'form': form})
+
+def terminos(request):
+    return render(request, 'core/terminos_condiciones.html')
+
+def faq(request):
+    return render(request, 'core/faq.html')
+
+
+def checkout_redirect(request):
+    messages.info(request, "Primero selecciona un tour para crear una reserva.")
+    return redirect("tours")
+
+
+def _site_url(request):
+    return getattr(settings, "SITE_URL", request.build_absolute_uri("/").rstrip("/"))
+
+
+def _currency():
+    return getattr(settings, "PAYMENT_DEFAULT_CURRENCY", "USD").upper()
+
+
+def _amount_minor_units(amount):
+    dec = Decimal(amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return int(dec * 100)
+
+
+def _send_ticket_email(reserva):
+    try:
+        pdf_buffer = generar_ticket_pdf(reserva)
+        pdf_content = pdf_buffer.getvalue()
+        pdf_buffer.close()
+        subject = f"Confirmacion de Reserva #{reserva.id:06d} - TortugaTour"
+        html_body = render_to_string("core/email_ticket.html", {"reserva": reserva})
+        recipient = reserva.correo or (reserva.usuario.email if reserva.usuario else "")
+        if not recipient:
+            return
+
+        email_cliente = EmailMessage(
+            subject=subject,
+            body=html_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[recipient],
+        )
+        email_cliente.content_subtype = "html"
+        email_cliente.attach(f"Ticket_TortugaTour_{reserva.id}.pdf", pdf_content, "application/pdf")
+        email_cliente.send(fail_silently=True)
+    except Exception:
+        logger.exception("No se pudo enviar ticket para la reserva %s", reserva.id)
+
+
+def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
+    with transaction.atomic():
+        reserva = Reserva.objects.select_for_update().select_related("salida").get(id=reserva_id)
+        salida = SalidaTour.objects.select_for_update().get(id=reserva.salida_id)
+        pago = None
+        if external_id:
+            pago = (
+                Pago.objects.select_for_update()
+                .filter(reserva=reserva, proveedor=proveedor, external_id=external_id)
+                .order_by("-id")
+                .first()
+            )
+        if pago is None:
+            pago = (
+                Pago.objects.select_for_update()
+                .filter(reserva=reserva, proveedor=proveedor, estado__in=["created", "approved"])
+                .order_by("-id")
+                .first()
+            )
+
+        if reserva.estado == "pagada":
+            if pago and pago.estado != "paid":
+                pago.estado = "paid"
+                pago.payload = payload or pago.payload
+                if external_id:
+                    pago.external_id = external_id
+                pago.save(update_fields=["estado", "payload", "external_id", "actualizado_en"])
+            return reserva, False
+        if reserva.estado == "cancelada":
+            raise ValueError("La reserva esta cancelada.")
+
+        personas = reserva.adultos + reserva.ninos
+        if salida.cupos_disponibles < personas:
+            raise ValueError("No hay cupos suficientes al confirmar el pago.")
+
+        reserva.estado = "pagada"
+        reserva.save(update_fields=["estado"])
+
+        salida.cupos_disponibles -= personas
+        salida.save(update_fields=["cupos_disponibles"])
+
+        if pago:
+            pago.estado = "paid"
+            pago.moneda = pago.moneda or _currency()
+            pago.monto = reserva.total_pagar
+            pago.payload = payload or pago.payload
+            if external_id:
+                pago.external_id = external_id
+            pago.save(update_fields=["estado", "moneda", "monto", "payload", "external_id", "actualizado_en"])
+        else:
+            Pago.objects.create(
+                reserva=reserva,
+                proveedor=proveedor,
+                estado="paid",
+                moneda=_currency(),
+                monto=reserva.total_pagar,
+                external_id=external_id,
+                payload=payload or {},
+            )
+
+    _send_ticket_email(reserva)
+    return reserva, True
+
+
+def _paypal_base_url():
+    env = getattr(settings, "PAYPAL_ENV", "sandbox").lower()
+    return "https://api-m.paypal.com" if env == "live" else "https://api-m.sandbox.paypal.com"
+
+
+def _paypal_access_token():
+    client_id = getattr(settings, "PAYPAL_CLIENT_ID", "")
+    client_secret = getattr(settings, "PAYPAL_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        raise ValueError("PayPal no esta configurado.")
+
+    response = requests.post(
+        f"{_paypal_base_url()}/v1/oauth2/token",
+        auth=(client_id, client_secret),
+        data={"grant_type": "client_credentials"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+def _paypal_verify_webhook(request, event_body):
+    webhook_id = getattr(settings, "PAYPAL_WEBHOOK_ID", "")
+    if not webhook_id:
+        return False
+
+    token = _paypal_access_token()
+    verify_payload = {
+        "transmission_id": request.headers.get("PAYPAL-TRANSMISSION-ID", ""),
+        "transmission_time": request.headers.get("PAYPAL-TRANSMISSION-TIME", ""),
+        "cert_url": request.headers.get("PAYPAL-CERT-URL", ""),
+        "auth_algo": request.headers.get("PAYPAL-AUTH-ALGO", ""),
+        "transmission_sig": request.headers.get("PAYPAL-TRANSMISSION-SIG", ""),
+        "webhook_id": webhook_id,
+        "webhook_event": event_body,
+    }
+    response = requests.post(
+        f"{_paypal_base_url()}/v1/notifications/verify-webhook-signature",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json=verify_payload,
+        timeout=20,
+    )
+    response.raise_for_status()
+    return response.json().get("verification_status") == "SUCCESS"
+
+
+def _lemonsqueezy_api_base_url():
+    return "https://api.lemonsqueezy.com/v1"
+
+
+def _lemonsqueezy_headers():
+    api_key = getattr(settings, "LEMONSQUEEZY_API_KEY", "")
+    if not api_key:
+        raise ValueError("Lemon Squeezy no esta configurado.")
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "Accept": "application/vnd.api+json",
+        "Content-Type": "application/vnd.api+json",
+    }
+
+
+def _lemonsqueezy_verify_signature(request):
+    secret = getattr(settings, "LEMONSQUEEZY_WEBHOOK_SECRET", "")
+    signature = request.headers.get("X-Signature", "")
+    if not secret or not signature:
+        return False
+    digest = hmac.new(secret.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(digest, signature)
+
+
+def checkout_pago(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if reserva.estado == "pagada":
+        messages.success(request, "Pago confirmado. Tu reserva ya esta pagada.")
+        return redirect("home")
+
+    context = {
+        "reserva": reserva,
+        "tour": reserva.salida.tour,
+        "salida": reserva.salida,
+        "destino": reserva.salida.tour.destino,
+        "payment_currency": _currency(),
+        "paypal_client_id": getattr(settings, "PAYPAL_CLIENT_ID", ""),
+        "lemonsqueezy_enabled": bool(getattr(settings, "LEMONSQUEEZY_API_KEY", "")),
+        "paypal_enabled": bool(getattr(settings, "PAYPAL_CLIENT_ID", "")),
+    }
+    return render(request, "core/checkout.html", context)
+
+
+@require_POST
+def create_lemonsqueezy_checkout(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if reserva.estado != "pendiente":
+        messages.warning(request, "Esta reserva ya no esta pendiente de pago.")
+        return redirect("tours")
+
+    store_id = getattr(settings, "LEMONSQUEEZY_STORE_ID", "")
+    variant_id = reserva.salida.tour.lemonsqueezy_variant_id or getattr(settings, "LEMONSQUEEZY_VARIANT_ID", "")
+    if not store_id or not variant_id:
+        messages.error(request, "Lemon Squeezy no esta configurado.")
+        return redirect("checkout_reserva", reserva_id=reserva.id)
+
+    site_url = _site_url(request)
+    currency = _currency()
+    checkout_payload = {
+        "data": {
+            "type": "checkouts",
+            "attributes": {
+                "checkout_data": {
+                    "custom": {
+                        "reserva_id": str(reserva.id),
+                    },
+                },
+                "checkout_options": {
+                    "embed": False,
+                },
+                "product_options": {
+                    "redirect_url": f"{site_url}{reverse('home')}?pago=ok",
+                    "receipt_button_text": "Volver a TortugaTour",
+                    "receipt_link_url": f"{site_url}{reverse('home')}",
+                },
+            },
+            "relationships": {
+                "store": {"data": {"type": "stores", "id": str(store_id)}},
+                "variant": {"data": {"type": "variants", "id": str(variant_id)}},
+            },
+        }
+    }
+    try:
+        response = requests.post(
+            f"{_lemonsqueezy_api_base_url()}/checkouts",
+            headers=_lemonsqueezy_headers(),
+            json=checkout_payload,
+            timeout=20,
+        )
+    except requests.RequestException:
+        logger.exception("Error de red al crear checkout Lemon Squeezy para reserva %s", reserva.id)
+        messages.error(request, "No se pudo conectar con Lemon Squeezy.")
+        return redirect("checkout_reserva", reserva_id=reserva.id)
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = {"raw": response.text}
+
+    if response.status_code >= 400:
+        logger.error("Lemon Squeezy error %s: %s", response.status_code, data)
+        error_detail = ""
+        if isinstance(data, dict):
+            errors = data.get("errors", [])
+            if errors and isinstance(errors, list):
+                first = errors[0]
+                error_detail = first.get("detail") or first.get("title") or ""
+        msg = "No se pudo crear el checkout en Lemon Squeezy."
+        if error_detail:
+            msg = f"{msg} {error_detail}"
+        messages.error(request, msg)
+        return redirect("checkout_reserva", reserva_id=reserva.id)
+
+    checkout_data = data.get("data", {})
+    attributes = checkout_data.get("attributes", {})
+    checkout_url = attributes.get("url", "")
+    checkout_id = checkout_data.get("id", "")
+    if not checkout_url:
+        messages.error(request, "Lemon Squeezy no devolvio URL de pago.")
+        return redirect("checkout_reserva", reserva_id=reserva.id)
+
+    Pago.objects.create(
+        reserva=reserva,
+        proveedor="lemonsqueezy",
+        estado="created",
+        moneda=currency,
+        monto=reserva.total_pagar,
+        external_id=checkout_id,
+        checkout_url=checkout_url,
+        payload=data,
+    )
+    return redirect(checkout_url, permanent=False)
+
+
+@require_POST
+def create_paypal_order(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if reserva.estado != "pendiente":
+        return JsonResponse({"error": "La reserva ya no esta pendiente."}, status=400)
+
+    currency = _currency()
+    token = _paypal_access_token()
+    amount_str = Decimal(reserva.total_pagar).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    payload = {
+        "intent": "CAPTURE",
+        "purchase_units": [
+            {
+                "custom_id": str(reserva.id),
+                "reference_id": str(reserva.id),
+                "amount": {"currency_code": currency, "value": f"{amount_str}"},
+                "description": f"Reserva TortugaTour #{reserva.id}",
+            }
+        ],
+        "application_context": {
+            "brand_name": "TortugaTour",
+            "shipping_preference": "NO_SHIPPING",
+            "user_action": "PAY_NOW",
+        },
+    }
+    response = requests.post(
+        f"{_paypal_base_url()}/v2/checkout/orders",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=20,
+    )
+    body = response.json()
+    if response.status_code >= 400:
+        return JsonResponse({"error": "No se pudo crear la orden de PayPal.", "details": body}, status=400)
+
+    order_id = body.get("id", "")
+    Pago.objects.create(
+        reserva=reserva,
+        proveedor="paypal",
+        estado="created",
+        moneda=currency,
+        monto=reserva.total_pagar,
+        external_id=order_id,
+        payload=body,
+    )
+    return JsonResponse({"orderID": order_id})
+
+
+@require_POST
+def capture_paypal_order(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    try:
+        body = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON invalido."}, status=400)
+
+    order_id = body.get("orderID")
+    if not order_id:
+        return JsonResponse({"error": "orderID es requerido."}, status=400)
+
+    token = _paypal_access_token()
+    response = requests.post(
+        f"{_paypal_base_url()}/v2/checkout/orders/{order_id}/capture",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        timeout=20,
+    )
+    data = response.json()
+    if response.status_code >= 400:
+        return JsonResponse({"error": "No se pudo capturar la orden.", "details": data}, status=400)
+
+    if data.get("status") != "COMPLETED":
+        return JsonResponse({"error": f"Estado inesperado: {data.get('status')}", "details": data}, status=400)
+
+    try:
+        _mark_reserva_paid(reserva.id, "paypal", external_id=order_id, payload=data)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    return JsonResponse({"ok": True, "redirect_url": reverse("home")})
+
+
+@csrf_exempt
+def lemonsqueezy_webhook(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+    if not _lemonsqueezy_verify_signature(request):
+        return HttpResponse(status=400)
+
+    try:
+        event = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return HttpResponse(status=400)
+
+    event_name = event.get("meta", {}).get("event_name", "")
+    if event_name in ("order_created", "order_refunded"):
+        data = event.get("data", {})
+        attributes = data.get("attributes", {})
+        custom = event.get("meta", {}).get("custom_data", {}) or {}
+        reserva_id = custom.get("reserva_id")
+        order_id = str(data.get("id", ""))
+
+        if reserva_id and event_name == "order_created":
+            try:
+                _mark_reserva_paid(
+                    int(reserva_id),
+                    "lemonsqueezy",
+                    external_id=order_id,
+                    payload=event,
+                )
+            except Exception:
+                logger.exception("Fallo confirmando pago Lemon Squeezy para reserva %s", reserva_id)
+                return HttpResponse(status=500)
+        elif reserva_id and event_name == "order_refunded":
+            Pago.objects.filter(
+                reserva_id=int(reserva_id),
+                proveedor="lemonsqueezy",
+            ).update(estado="failed", payload=event)
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def paypal_webhook(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+    try:
+        body = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return HttpResponse(status=400)
+
+    try:
+        if not _paypal_verify_webhook(request, body):
+            return HttpResponse(status=400)
+    except Exception:
+        logger.exception("Error verificando webhook PayPal")
+        return HttpResponse(status=400)
+
+    if body.get("event_type") == "PAYMENT.CAPTURE.COMPLETED":
+        resource = body.get("resource", {})
+        order_id = resource.get("supplementary_data", {}).get("related_ids", {}).get("order_id", "")
+        reserva_id = resource.get("custom_id", "")
+
+        if not reserva_id and order_id:
+            try:
+                token = _paypal_access_token()
+                order_response = requests.get(
+                    f"{_paypal_base_url()}/v2/checkout/orders/{order_id}",
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                    timeout=20,
+                )
+                order_response.raise_for_status()
+                order_data = order_response.json()
+                purchase_units = order_data.get("purchase_units", [])
+                if purchase_units:
+                    reserva_id = purchase_units[0].get("custom_id", "")
+            except Exception:
+                logger.exception("No se pudo resolver custom_id desde orden %s", order_id)
+
+        if reserva_id:
+            try:
+                _mark_reserva_paid(int(reserva_id), "paypal", external_id=order_id or resource.get("id", ""), payload=body)
+            except Exception:
+                logger.exception("Fallo confirmando webhook PayPal para reserva %s", reserva_id)
+                return HttpResponse(status=500)
+    return HttpResponse(status=200)
+
+

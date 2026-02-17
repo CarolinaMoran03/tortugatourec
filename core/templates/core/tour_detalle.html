@@ -1,0 +1,295 @@
+{% extends "core/base.html" %}
+{% block title %}{{ tour.nombre }} | TortugaTour{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+    <div class="relative h-[55vh] rounded-[3.5rem] overflow-hidden mb-12 shadow-2xl border-4 border-white">
+        {% if tour.destino.imagen_url %}
+            <img src="{{ tour.destino.imagen_url }}" alt="{{ tour.nombre }}" class="w-full h-full object-cover">
+        {% else %}
+            <div class="flex items-center justify-center h-full bg-slate-200 text-slate-400">
+                <span class="material-icons text-7xl">image</span>
+            </div>
+        {% endif %}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-12">
+            <div>
+                <span class="bg-primary text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-4 inline-block shadow-lg">
+                    {{ tour.destino.nombre }}
+                </span>
+                <h1 class="text-4xl md:text-6xl font-black text-white leading-tight drop-shadow-md">{{ tour.nombre }}</h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-12">
+        <div class="lg:col-span-2 space-y-10">
+            <section>
+                <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <span class="w-8 h-1 bg-primary rounded-full"></span>
+                    Descripción del Recorrido
+                </h2>
+                <p class="text-slate-600 text-lg leading-relaxed">{{ tour.descripcion }}</p>
+            </section>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                    <span class="material-icons text-primary mb-3">timer</span>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Duración</p>
+                    <p class="font-bold text-slate-800 italic">Full Day</p>
+                </div>
+                <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                    <span class="material-icons text-primary mb-3">groups</span>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Capacidad</p>
+                    <p class="font-bold text-slate-800">{{ tour.cupo_maximo }} Pers.</p>
+                </div>
+                <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                    <span class="material-icons text-primary mb-3">g_translate</span>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Idiomas</p>
+                    <p class="font-bold text-slate-800">ESP / ENG</p>
+                </div>
+                <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                    <span class="material-icons text-primary mb-3">phishing</span>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Dificultad</p>
+                    <p class="font-bold text-slate-800">Media</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1">
+            {% if salidas %}
+            <div id="reservaContainer" class="sticky top-28 bg-white border border-slate-200 rounded-[3rem] p-8 shadow-2xl transition-all duration-500">
+                
+                <form id="reservaForm" method="post">
+                    {% csrf_token %}
+                    
+                    <div id="paso1" class="space-y-8">
+                        <div class="text-center">
+                            <h3 class="text-2xl font-black text-slate-900">Reserva ahora</h3>
+                            <p class="text-slate-400 text-sm">Selecciona tus asientos</p>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">1. Fecha y Horario</label>
+                            <div class="relative">
+                                <select name="salida" id="selectSalida" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-700 appearance-none outline-none focus:ring-4 focus:ring-primary/10 transition-all" required onchange="recalcular()">
+                                    <option value="" disabled selected>Seleccionar fecha...</option>
+                                    {% for s in salidas %}
+                                        <option value="{{ s.id }}" data-cupos="{{ s.cupos_disponibles }}">
+                                            {{ s.fecha|date:"d M" }} — {{ s.hora|time:"H:i" }} ({{ s.cupos_disponibles }} disp.)
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <span class="material-icons absolute right-4 top-4 text-slate-400 pointer-events-none">calendar_month</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">2. Pasajeros</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100 text-center">
+                                    <span class="text-[10px] font-black text-slate-400 block mb-2">ADULTOS</span>
+                                    <div class="flex items-center justify-between px-2">
+                                        <button type="button" onclick="cambiar('adultos', -1)" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm font-black text-slate-600 hover:bg-primary hover:text-white transition-all">-</button>
+                                        <input type="text" id="adultos" name="adultos" value="0" readonly class="w-12 text-center bg-transparent font-black text-2xl text-slate-900 focus:ring-0 border-none">
+                                        <button type="button" onclick="cambiar('adultos', 1)" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm font-black text-slate-600 hover:bg-primary hover:text-white transition-all">+</button>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100 text-center">
+                                    <span class="text-[10px] font-black text-slate-400 block mb-2">NIÑOS</span>
+                                    <div class="flex items-center justify-between px-2">
+                                        <button type="button" onclick="cambiar('ninos', -1)" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm font-black text-slate-600 hover:bg-primary hover:text-white transition-all">-</button>
+                                        <input type="text" id="ninos" name="ninos" value="0" readonly class="w-12 text-center bg-transparent font-black text-2xl text-slate-900 focus:ring-0 border-none">
+                                        <button type="button" onclick="cambiar('ninos', 1)" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm font-black text-slate-600 hover:bg-primary hover:text-white transition-all">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl">
+                            <div class="flex justify-between items-center opacity-40 text-[10px] font-black mb-2">
+                                <span>TOTAL ESTIMADO</span>
+                                <span>${{ tour.precio }} c/u</span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="text-sm font-bold uppercase">Monto</span>
+                                <span class="text-4xl font-black text-primary leading-none">$<span id="totalPagar">0.00</span></span>
+                            </div>
+                        </div>
+
+                        <p id="error-msg" class="hidden text-xs font-bold text-red-500 bg-red-50 p-4 rounded-2xl text-center border border-red-100"></p>
+
+                        <button type="button" onclick="validarYPasar()" class="w-full py-6 bg-primary hover:bg-primary-dark text-white rounded-[2rem] font-black shadow-2xl transition-all transform hover:-translate-y-1">
+                            CONTINUAR RESERVA
+                        </button>
+                    </div>
+
+                    <div id="bloqueAuth" class="hidden space-y-6 text-center py-4">
+                        <div class="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="material-icons text-4xl">lock</span>
+                        </div>
+                        <h3 class="text-2xl font-black text-slate-900 leading-tight">¡Casi listo!<br>Inicia sesión</h3>
+                        <p class="text-slate-500 text-sm">Para confirmar tu reserva de <b>$<span id="resumenPrecioAuth"></span></b>, necesitamos identificarte.</p>
+                        
+                        <div class="space-y-3 pt-4">
+                            <a href="{% url 'login' %}?next={{ request.path }}" class="block w-full py-5 bg-primary text-white rounded-2xl font-black shadow-lg hover:bg-primary-dark transition-all">
+                                ENTRAR A MI CUENTA
+                            </a>
+                            <button type="button" onclick="volverPaso1()" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-4 block w-full">
+                                ← Volver y editar
+                            </button>
+                        </div>
+                    </div>
+
+                    {% if user.is_authenticated %}
+                    <div id="paso2" class="hidden space-y-6">
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="volverPaso1()" class="w-10 h-10 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition">
+                                <span class="material-icons text-sm">arrow_back_ios_new</span>
+                            </button>
+                            <h3 class="text-xl font-black text-slate-900">Tus Datos</h3>
+                        </div>
+
+                        <div class="space-y-4">
+                            <input type="text" name="nombre" value="{{ user.first_name }}" placeholder="Nombre" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 outline-none focus:ring-4 focus:ring-primary/10 font-bold" required>
+                            <input type="tel" name="telefono" placeholder="WhatsApp (Ej: +593...)" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 outline-none focus:ring-4 focus:ring-primary/10 font-bold" required>
+                            <input type="text" name="identificacion" placeholder="Cédula o Pasaporte" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 outline-none focus:ring-4 focus:ring-primary/10 font-bold" required>
+                        </div>
+                        
+                        <button type="submit" id="btnConfirmar" class="w-full py-6 bg-green-600 hover:bg-green-700 text-white rounded-[2.5rem] font-black shadow-2xl transition-all">
+                            CONFIRMAR AHORA
+                        </button>
+                    </div>
+                    {% endif %}
+                </form>
+
+                <div id="pasoExito" class="hidden text-center py-10 space-y-6 animate-in fade-in zoom-in duration-300">
+                    <div class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                        <span class="material-icons text-5xl">check_circle</span>
+                    </div>
+                    <h3 class="text-2xl font-black text-slate-900 uppercase">¡Recibido!</h3>
+                    <p class="text-slate-500">Tu reserva se procesó con éxito. Revisa tu email para los tickets.</p>
+                    <button onclick="location.href='/mis-reservas/'" class="bg-slate-900 text-white px-8 py-3 rounded-full font-black text-xs">VER MIS RESERVAS</button>
+                </div>
+
+            </div>
+            {% else %}
+            <div class="bg-red-50 p-10 rounded-[3rem] border-2 border-dashed border-red-100 text-center">
+                <span class="material-icons text-red-200 text-6xl mb-4">event_busy</span>
+                <p class="font-black text-red-900 text-xl">Sin disponibilidad</p>
+                <p class="text-xs text-red-600/60 mt-2 font-bold tracking-widest uppercase">Pronto abriremos nuevas fechas</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    const precioBase = parseFloat("{{ tour.precio }}".replace(',', '.'));
+    const usuarioLogueado = {{ user.is_authenticated|yesno:"true,false" }};
+    
+    function cambiar(idInput, delta) {
+        const input = document.getElementById(idInput);
+        let valor = parseInt(input.value) || 0;
+        let nuevo = valor + delta;
+        if (nuevo < 0) nuevo = 0;
+
+        const select = document.getElementById('selectSalida');
+        if (select.value && delta > 0) {
+            const cuposMax = parseInt(select.options[select.selectedIndex].getAttribute('data-cupos'));
+            const totalActual = (parseInt(document.getElementById('adultos').value) || 0) + (parseInt(document.getElementById('ninos').value) || 0);
+            if (totalActual >= cuposMax) {
+                mostrarError("No hay más cupos disponibles para esta fecha.");
+                return;
+            }
+        }
+
+        input.value = nuevo;
+        recalcular();
+    }
+
+    function recalcular() {
+        const ad = parseInt(document.getElementById('adultos').value) || 0;
+        const ni = parseInt(document.getElementById('ninos').value) || 0;
+        const totalPersonas = ad + ni;
+        const totalDinero = totalPersonas * precioBase;
+        
+        document.getElementById('totalPagar').innerText = totalDinero.toLocaleString('en-US', {minimumFractionDigits: 2});
+        if (totalPersonas > 0) document.getElementById('error-msg').classList.add('hidden');
+    }
+
+    function mostrarError(msg) {
+        const error = document.getElementById('error-msg');
+        error.innerText = msg;
+        error.classList.remove('hidden');
+        setTimeout(() => { error.classList.add('hidden'); }, 4000);
+    }
+
+    function validarYPasar() {
+        const select = document.getElementById('selectSalida');
+        const totalGente = (parseInt(document.getElementById('adultos').value) || 0) + (parseInt(document.getElementById('ninos').value) || 0);
+        
+        if (!select.value) {
+            mostrarError("Por favor, selecciona una fecha.");
+            return;
+        }
+        if (totalGente === 0) {
+            mostrarError("Añade al menos un pasajero.");
+            return;
+        }
+
+        if (usuarioLogueado) {
+            document.getElementById('paso1').classList.add('hidden');
+            document.getElementById('paso2').classList.remove('hidden');
+        } else {
+            document.getElementById('resumenPrecioAuth').innerText = document.getElementById('totalPagar').innerText;
+            document.getElementById('paso1').classList.add('hidden');
+            document.getElementById('bloqueAuth').classList.remove('hidden');
+        }
+    }
+
+    function volverPaso1() {
+        document.getElementById('paso2')?.classList.add('hidden');
+        document.getElementById('bloqueAuth').classList.add('hidden');
+        document.getElementById('paso1').classList.remove('hidden');
+    }
+
+    // ENVÍO AJAX - REDIRIGE A CHECKOUT
+    const formReserva = document.getElementById('reservaForm');
+    if(formReserva) {
+        formReserva.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnConfirmar');
+            const originalText = btn.innerText;
+            
+            btn.innerText = "PROCESANDO...";
+            btn.disabled = true;
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: new FormData(this),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json().then(data => ({ status: res.status, body: data })))
+            .then(res => {
+                if (res.status === 200 && res.body.success) {
+                    // REDIRIGIR AL CHECKOUT
+                    window.location.href = res.body.redirect_url;
+                } else {
+                    mostrarError(res.body.error || "Error al reservar.");
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                mostrarError("Error de conexión.");
+                btn.disabled = false;
+                btn.innerText = originalText;
+            });
+        });
+    }
+</script>
+{% endblock %}

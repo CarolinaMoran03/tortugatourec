@@ -1,0 +1,115 @@
+{% extends "core/base.html" %}
+
+{% block title %}Preguntas Frecuentes | TortugaTour{% endblock %}
+
+{% block content %}
+<div class="bg-slate-50 min-h-screen pb-20">
+    <div class="bg-primary py-20">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <span class="text-white font-black uppercase tracking-[0.3em] text-[10px] bg-black/10 px-4 py-2 rounded-full mb-6 inline-block">Soporte al Viajero</span>
+            <h1 class="text-4xl md:text-5xl font-black text-white mb-4">¿Cómo podemos <span class="text-slate-900">ayudarte?</span></h1>
+            <p class="text-white/80 text-lg">Todo lo que necesitas saber antes de tu aventura en Galápagos.</p>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-6 -mt-10">
+        <div class="space-y-4">
+            
+            <div class="group bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                <button class="w-full px-8 py-6 text-left flex justify-between items-center focus:outline-none" onclick="toggleFAQ(this)">
+                    <span class="font-bold text-slate-800 md:text-lg">¿Qué debo llevar para un tour de día completo?</span>
+                    <span class="material-icons text-primary transition-transform group-open:rotate-180">expand_more</span>
+                </button>
+                <div class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out px-8 bg-slate-50">
+                    <p class="py-6 text-slate-600 leading-relaxed">
+                        Recomendamos llevar protector solar biodegradable, traje de baño, toalla, calzado cómodo para caminar (tipo sandalias cerradas o zapatos de trekking), gorra y una chaqueta ligera para el viento en el bote. Nosotros proporcionamos el equipo de snorkel.
+                    </p>
+                </div>
+            </div>
+
+            <div class="group bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                <button class="w-full px-8 py-6 text-left flex justify-between items-center focus:outline-none" onclick="toggleFAQ(this)">
+                    <span class="font-bold text-slate-800 md:text-lg">¿Los tours incluyen alimentación?</span>
+                    <span class="material-icons text-primary">expand_more</span>
+                </button>
+                <div class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out px-8 bg-slate-50">
+                    <p class="py-6 text-slate-600 leading-relaxed">
+                        Sí, todos nuestros tours de día completo incluyen un almuerzo nutritivo a bordo o en un restaurante local, además de agua purificada y snacks durante el recorrido. Si tienes restricciones alimenticias (vegano, celíaco, etc.), avísanos al reservar.
+                    </p>
+                </div>
+            </div>
+
+            <div class="group bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                <button class="w-full px-8 py-6 text-left flex justify-between items-center focus:outline-none" onclick="toggleFAQ(this)">
+                    <span class="font-bold text-slate-800 md:text-lg">¿Es seguro viajar con niños pequeños?</span>
+                    <span class="material-icons text-primary">expand_more</span>
+                </button>
+                <div class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out px-8 bg-slate-50">
+                    <p class="py-6 text-slate-600 leading-relaxed">
+                        Galápagos es un destino familiar increíble. Sin embargo, algunos tours navegables pueden ser cansados para niños menores de 4 años. Contamos con chalecos salvavidas de todos los tamaños y guías capacitados para ayudar a los más pequeños.
+                    </p>
+                </div>
+            </div>
+
+            <div class="group bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                <button class="w-full px-8 py-6 text-left flex justify-between items-center focus:outline-none" onclick="toggleFAQ(this)">
+                    <span class="font-bold text-slate-800 md:text-lg">¿Cuál es la política de avistamiento de animales?</span>
+                    <span class="material-icons text-primary">expand_more</span>
+                </button>
+                <div class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out px-8 bg-slate-50">
+                    <p class="py-6 text-slate-600 leading-relaxed">
+                        Aunque Galápagos rebosa de vida silvestre, los animales son libres. No podemos garantizar el avistamiento de especies específicas al 100%, pero nuestros guías conocen los mejores puntos y horarios para maximizar las oportunidades. Siempre respetamos la distancia mínima de 2 metros.
+                    </p>
+                </div>
+            </div>
+
+            <div class="group bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                <button class="w-full px-8 py-6 text-left flex justify-between items-center focus:outline-none" onclick="toggleFAQ(this)">
+                    <span class="font-bold text-slate-800 md:text-lg">¿Necesito ser experto para hacer snorkel?</span>
+                    <span class="material-icons text-primary">expand_more</span>
+                </button>
+                <div class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out px-8 bg-slate-50">
+                    <p class="py-6 text-slate-600 leading-relaxed">
+                        ¡Para nada! Proporcionamos aletas, máscaras y tubos de alta calidad, además de tubos de flotación ("fideos") y chalecos para quienes no se sientan seguros nadando. El guía siempre está en el agua supervisando al grupo.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="mt-16 text-center bg-slate-900 rounded-[3rem] p-10 shadow-xl shadow-slate-200">
+            <h3 class="text-white font-black text-xl mb-2">¿Aún tienes dudas?</h3>
+            <p class="text-slate-400 mb-8 text-sm">Estamos disponibles 24/7 vía WhatsApp para ayudarte.</p>
+            <a href="{% url 'contacto' %}" class="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-2xl font-black hover:bg-primary-dark transition-all">
+                <span class="material-icons">mail</span>
+                CONTÁCTANOS
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleFAQ(button) {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('.material-icons');
+        
+        // Cerrar otros abiertos (opcional, si quieres que solo uno esté abierto a la vez)
+        /*
+        document.querySelectorAll('.max-h-screen').forEach(el => {
+            if (el !== content) {
+                el.style.maxHeight = null;
+                el.previousElementSibling.querySelector('.material-icons').style.transform = 'rotate(0deg)';
+            }
+        });
+        */
+
+        if (content.style.maxHeight) {
+            content.style.maxHeight = null;
+            icon.style.transform = 'rotate(0deg)';
+        } else {
+            content.style.maxHeight = content.scrollHeight + "px";
+            icon.style.transform = 'rotate(180deg)';
+        }
+    }
+</script>
+{% endblock %}

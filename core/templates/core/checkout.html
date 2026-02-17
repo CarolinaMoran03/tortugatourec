@@ -1,0 +1,134 @@
+{% extends "core/base.html" %}
+
+{% block title %}Checkout | TortugaTour{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-5xl mx-auto grid lg:grid-cols-2 gap-8">
+        <div class="bg-white rounded-2xl shadow p-8 border border-slate-200">
+            <h1 class="text-2xl font-bold text-slate-900 mb-4">Finalizar reserva</h1>
+            <p class="text-slate-600 mb-6">Completa el pago para confirmar tu cupo.</p>
+
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-600">Tour</span>
+                    <span class="font-semibold text-slate-900">{{ tour.nombre }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-600">Destino</span>
+                    <span class="font-semibold text-slate-900">{{ destino.nombre }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-600">Fecha</span>
+                    <span class="font-semibold text-slate-900">{{ salida.fecha|date:"d/m/Y" }}</span>
+                </div>
+                {% if salida.hora %}
+                <div class="flex justify-between">
+                    <span class="text-slate-600">Hora</span>
+                    <span class="font-semibold text-slate-900">{{ salida.hora|time:"H:i" }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between">
+                    <span class="text-slate-600">Personas</span>
+                    <span class="font-semibold text-slate-900">{{ reserva.total_personas }}</span>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 mt-6 pt-6 flex justify-between items-center">
+                <span class="text-slate-700 font-semibold">Total</span>
+                <span class="text-2xl font-bold text-slate-900">${{ reserva.total_pagar|floatformat:2 }}</span>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow p-8 border border-slate-200">
+            <h2 class="text-xl font-bold text-slate-900 mb-2">Metodo de pago</h2>
+            <p class="text-sm text-slate-600 mb-6">Tu pago se procesa de forma segura con proveedores internacionales.</p>
+
+            {% if lemonsqueezy_enabled %}
+            <form method="post" action="{% url 'create_lemonsqueezy_checkout' reserva.id %}" class="mb-6">
+                {% csrf_token %}
+                <button
+                    type="submit"
+                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition"
+                >
+                    Pagar con tarjeta
+                </button>
+            </form>
+            {% else %}
+            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+                Lemon Squeezy no esta configurado todavia.
+            </p>
+            {% endif %}
+
+            <div class="mb-2 text-center text-sm text-slate-500">o paga con</div>
+
+            {% if paypal_enabled %}
+            <div id="paypal-button-container"></div>
+            <p id="paypal-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 mt-4"></p>
+            {% else %}
+            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                PayPal no esta configurado todavia.
+            </p>
+            {% endif %}
+
+            <p class="text-xs text-slate-500 mt-6">
+                La reserva se confirma automaticamente cuando el pago se completa.
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if paypal_enabled and paypal_client_id %}
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency={{ payment_currency }}&intent=capture"></script>
+<script>
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    const paypalErrorEl = document.getElementById("paypal-error");
+
+    function showPaypalError(message) {
+        paypalErrorEl.textContent = message;
+        paypalErrorEl.classList.remove("hidden");
+    }
+
+    paypal.Buttons({
+        createOrder: async function () {
+            const response = await fetch("{% url 'create_paypal_order' reserva.id %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken")
+                }
+            });
+            const data = await response.json();
+            if (!response.ok || !data.orderID) {
+                showPaypalError(data.error || "No se pudo crear la orden en PayPal.");
+                throw new Error("paypal-create-order-failed");
+            }
+            return data.orderID;
+        },
+        onApprove: async function (data) {
+            const response = await fetch("{% url 'capture_paypal_order' reserva.id %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({ orderID: data.orderID })
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                showPaypalError(payload.error || "No se pudo capturar el pago.");
+                return;
+            }
+            window.location.href = payload.redirect_url;
+        },
+        onError: function () {
+            showPaypalError("PayPal devolvio un error inesperado.");
+        }
+    }).render("#paypal-button-container");
+</script>
+{% endif %}
+{% endblock %}

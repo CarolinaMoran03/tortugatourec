@@ -1,0 +1,90 @@
+{% extends "core/base.html" %}
+
+{% block title %}Términos y Condiciones | TortugaTour{% endblock %}
+
+{% block content %}
+<div class="bg-slate-50 min-h-screen">
+    <div class="bg-slate-900 py-20">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <span class="text-primary font-black uppercase tracking-[0.3em] text-[10px] bg-primary/10 px-4 py-2 rounded-full mb-6 inline-block">Legal</span>
+            <h1 class="text-4xl md:text-5xl font-black text-white mb-4">Términos y <span class="text-primary">Condiciones</span></h1>
+            <p class="text-slate-400 text-sm font-medium">Última actualización: 14 de febrero, 2026</p>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-6 -mt-10 pb-20">
+        <div class="bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 p-8 md:p-16 border border-slate-100">
+            
+            <div class="prose prose-slate max-w-none space-y-12">
+                
+                <section>
+                    <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3 mb-6">
+                        <span class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-primary text-sm">01</span>
+                        Aceptación de Términos
+                    </h2>
+                    <p class="text-slate-600 leading-relaxed">
+                        Al acceder y utilizar los servicios de <strong>TortugaTour</strong>, usted acepta estar sujeto a los siguientes términos y condiciones. Estos términos rigen la relación entre el usuario y nuestra operadora turística para todas las reservas de tours en las Islas Galápagos.
+                    </p>
+                </section>
+
+                <hr class="border-slate-100">
+
+                <section>
+                    <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3 mb-6">
+                        <span class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-primary text-sm">02</span>
+                        Reservas y Pagos
+                    </h2>
+                    <div class="space-y-4 text-slate-600 leading-relaxed">
+                        <p>Para garantizar su espacio en nuestros tours, se requiere el pago total o parcial según lo especificado en el proceso de reserva.</p>
+                        <ul class="list-disc pl-5 space-y-2 marker:text-primary">
+                            <li>Los precios están expresados en Dólares Americanos (USD).</li>
+                            <li>La reserva solo se considera confirmada una vez que el sistema emite el comprobante y el pago ha sido verificado.</li>
+                            <li>TortugaTour se reserva el derecho de ajustar precios ante cambios imprevistos en tasas gubernamentales o parques nacionales.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <hr class="border-slate-100">
+
+                <section>
+                    <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3 mb-6">
+                        <span class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-primary text-sm">03</span>
+                        Políticas de Cancelación
+                    </h2>
+                    <p class="text-slate-600 leading-relaxed mb-4">
+                        Entendemos que los planes pueden cambiar. Nuestras políticas de reembolso se rigen bajo los siguientes tiempos:
+                    </p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
+                            <h4 class="font-bold text-emerald-900 text-sm mb-2">Más de 15 días antes</h4>
+                            <p class="text-xs text-emerald-700">Reembolso del 90% del valor total (10% por gastos administrativos).</p>
+                        </div>
+                        <div class="p-6 bg-red-50 rounded-3xl border border-red-100">
+                            <h4 class="font-bold text-red-900 text-sm mb-2">Menos de 48 horas</h4>
+                            <p class="text-xs text-red-700">No aplica reembolso (No-Show). Se permite cambio de nombre en el ticket bajo aprobación.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <hr class="border-slate-100">
+
+                <section>
+                    <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3 mb-6">
+                        <span class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-primary text-sm">04</span>
+                        Responsabilidad y Seguridad
+                    </h2>
+                    <p class="text-slate-600 leading-relaxed">
+                        TortugaTour actúa como operador y no se hace responsable por retrasos aéreos, condiciones climáticas extremas o desastres naturales. Los pasajeros deben seguir estrictamente las reglas del <strong>Parque Nacional Galápagos</strong> y las instrucciones de nuestros guías certificados.
+                    </p>
+                </section>
+
+                <div class="mt-16 p-8 bg-slate-900 rounded-[2rem] text-center">
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">¿Tienes dudas legales?</p>
+                    <a href="mailto:legal@tortugatour.com" class="text-primary font-black hover:text-white transition-colors">legal@tortugatour.com</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

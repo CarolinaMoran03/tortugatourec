@@ -1,0 +1,142 @@
+{% extends "core/base.html" %}
+
+{% block title %}Editar Tour | TortugaTour{% endblock %}
+
+{% block content %}
+<div class="bg-slate-50 min-h-screen py-12 px-4">
+    <div class="max-w-4xl mx-auto">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div>
+                <a href="{% url 'admin_tours' %}" class="inline-flex items-center gap-2 text-slate-400 hover:text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-3 transition-all group">
+                    <span class="material-icons text-sm group-hover:-translate-x-1 transition-transform">arrow_back</span> 
+                    Volver al Catálogo
+                </a>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+                    Configurar <span class="text-blue-600">Experiencia</span>
+                </h1>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                    <p class="text-slate-500 font-bold text-sm italic">Editando: "{{ tour.nombre }}"</p>
+                </div>
+            </div>
+
+            <div class="hidden md:block">
+                <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest block text-right mb-1">ID del Producto</span>
+                <span class="bg-slate-200 text-slate-600 px-4 py-1.5 rounded-lg font-mono text-xs font-bold">
+                    #TRG-{{ tour.id|stringformat:"03d" }}
+                </span>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
+            <form method="post" class="p-8 md:p-12">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-2 mb-2 border-b border-slate-50 pb-2">
+                            <span class="material-icons text-blue-600 text-sm">info</span>
+                            <h2 class="text-xs font-black uppercase text-slate-900 tracking-widest">Información Base</h2>
+                        </div>
+
+                        {% for field in form %}
+                            {% if field.name == 'nombre' or field.name == 'destino' or field.name == 'descripcion' %}
+                            <div class="space-y-1.5">
+                                <label class="block text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <p class="text-[10px] text-red-500 font-bold mt-1 ml-2">{{ field.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-2 mb-2 border-b border-slate-50 pb-2">
+                            <span class="material-icons text-blue-600 text-sm">payments</span>
+                            <h2 class="text-xs font-black uppercase text-slate-900 tracking-widest">Precios y Pasarela</h2>
+                        </div>
+
+                        {% for field in form %}
+                            {% if field.name != 'nombre' and field.name != 'destino' and field.name != 'descripcion' %}
+                            <div class="space-y-1.5">
+                                <label class="block text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <p class="text-[10px] text-red-500 font-bold mt-1 ml-2">{{ field.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 mt-6">
+                            <p class="text-[10px] text-blue-600 font-black uppercase tracking-tighter mb-1">Nota de Integración</p>
+                            <p class="text-[11px] text-slate-500 leading-relaxed font-medium italic">
+                                Si cambias el precio aquí, asegúrate de actualizar manualmente el producto en tu pasarela de pagos para evitar discrepancias.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-12 pt-8 border-t border-slate-50 flex flex-col sm:flex-row gap-4">
+                    <button type="submit" class="flex-[2] bg-slate-900 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3 group active:scale-95">
+                        GUARDAR CAMBIOS
+                        <span class="material-icons text-sm group-hover:rotate-12 transition-transform">check_circle</span>
+                    </button>
+                    
+                    <a href="{% url 'admin_tours' %}" class="flex-1 bg-slate-100 text-slate-400 py-5 rounded-2xl font-black text-xs tracking-[0.2em] hover:bg-slate-200 hover:text-slate-600 transition-all text-center flex items-center justify-center">
+                        DESCARTAR
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    input[type="text"], 
+    input[type="number"], 
+    select, 
+    textarea {
+        width: 100%;
+        background-color: #f8fafc; /* bg-slate-50 */
+        border: 2px solid #f1f5f9; /* border-slate-100 */
+        border-radius: 1.25rem; /* rounded-2xl */
+        padding: 0.9rem 1.25rem;
+        font-weight: 700;
+        color: #1e293b; /* text-slate-800 */
+        transition: all 0.3s;
+        outline: none;
+        font-size: 0.875rem;
+    }
+
+    textarea {
+        min-height: 120px;
+        resize: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+        border-color: #2563eb; /* border-blue-600 */
+        background-color: white;
+        box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.08);
+    }
+
+    /* Estilo para las etiquetas de error */
+    .text-red-500 {
+        animation: shake 0.4s ease-in-out;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-4px); }
+        75% { transform: translateX(4px); }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,211 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+<div class="max-w-7xl mx-auto px-6 py-16">
+
+    {% if messages %}
+    <div class="max-w-4xl mx-auto mb-10 fixed top-24 left-1/2 -translate-x-1/2 w-full px-6 z-50">
+        {% for message in messages %}
+        <div class="message-alert flex items-center justify-between p-4 mb-2 text-sm rounded-[1.5rem] shadow-xl transform transition-all duration-500 ease-in-out {% if message.tags == 'success' %}bg-green-100 text-green-900 border border-green-200{% else %}bg-red-100 text-red-900 border border-red-200{% endif %}"
+            role="alert">
+            <div class="flex items-center">
+                <span class="material-icons mr-3">{% if message.tags == 'success' %}check_circle{% else %}error{% endif %}</span>
+                <span class="font-bold">{{ message }}</span>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-slate-900 transition">
+                <span class="material-icons text-lg">close</span>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    <script>
+        // Auto-dismiss messages after 5 seconds
+        setTimeout(function () {
+            const messages = document.querySelectorAll('.message-alert');
+            messages.forEach(msg => {
+                msg.style.opacity = '0';
+                msg.style.transform = 'translateY(-20px)';
+                setTimeout(() => msg.remove(), 500);
+            });
+        }, 5000);
+    </script>
+    {% endif %}
+
+    <div class="text-center mb-16">
+        <span
+            class="text-primary font-black uppercase tracking-[0.3em] text-[10px] bg-yellow-400/20 text-yellow-600 px-4 py-2 rounded-full">¿Tienes
+            dudas?</span>
+        <h1 class="text-5xl md:text-7xl font-black text-slate-900 mt-6 mb-4 tracking-tighter uppercase leading-none">
+            Ponte en <span class="text-yellow-500">Contacto</span>
+        </h1>
+        <p class="text-slate-500 max-w-xl mx-auto font-medium text-lg">
+            Estamos aquí para ayudarte a planificar tu próxima aventura. Escríbenos y recibirás una respuesta inmediata.
+        </p>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-12">
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                <h3 class="text-2xl font-black uppercase tracking-tighter mb-10 relative z-10">Canales de<br>Atención
+                </h3>
+
+                <div class="space-y-10 relative z-10">
+                    <div class="flex items-center gap-5 group">
+                        <div
+                            class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-yellow-400 group-hover:bg-yellow-400 group-hover:text-slate-900 transition-all duration-300">
+                            <i class="fa-brands fa-whatsapp text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em]">Escríbenos</p>
+                            <p class="font-bold text-xl tracking-tight">+593 98 765 4321</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-5 group">
+                        <div
+                            class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-yellow-400 group-hover:bg-yellow-400 group-hover:text-slate-900 transition-all duration-300">
+                            <span class="material-icons">alternate_email</span>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em]">Email Oficial</p>
+                            <p class="font-bold text-lg tracking-tight">hola@tortugatour.com</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-5 group">
+                        <div
+                            class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-yellow-400 group-hover:bg-yellow-400 group-hover:text-slate-900 transition-all duration-300">
+                            <span class="material-icons">location_on</span>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em]">Oficina Central
+                            </p>
+                            <p class="font-bold text-sm leading-tight">Puerto Ayora,<br>Galápagos, Ecuador</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-12 pt-8 border-t border-white/10 flex gap-4">
+                    <a href="#"
+                        class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-yellow-400 hover:text-slate-900 transition-all">
+                        <i class="fa-brands fa-instagram text-xl"></i>
+                    </a>
+                    <a href="#"
+                        class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-yellow-400 hover:text-slate-900 transition-all">
+                        <i class="fa-brands fa-facebook-f text-xl"></i>
+                    </a>
+                    <a href="#"
+                        class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-yellow-400 hover:text-slate-900 transition-all">
+                        <i class="fa-brands fa-tiktok text-xl"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
+                    <span class="material-icons">schedule</span>
+                </div>
+                <div>
+                    <h4 class="font-black text-slate-900 uppercase text-[10px] tracking-widest">Horario Comercial</h4>
+                    <p class="text-sm text-slate-500 font-bold">Lun - Vie: 08:00 a 18:00</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2">
+            <div class="bg-white p-8 md:p-16 rounded-[4rem] shadow-2xl shadow-slate-200/50 border border-slate-50">
+
+                <form method="POST" class="space-y-8">
+                    {% csrf_token %}
+
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <label class="ml-4 text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Nombre
+                                Completo</label>
+                            {{ form.nombre }}
+                            {% if form.nombre.errors %}<p class="text-red-500 text-xs ml-4">{{ form.nombre.errors.0 }}
+                            </p>{% endif %}
+                        </div>
+
+                        <div class="space-y-3">
+                            <label
+                                class="ml-4 text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Email</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<p class="text-red-500 text-xs ml-4">{{ form.email.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="ml-4 text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Asunto de
+                            la consulta</label>
+                        {{ form.asunto }}
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="ml-4 text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Tu
+                            Mensaje</label>
+                        {{ form.mensaje }}
+                        {% if form.mensaje.errors %}<p class="text-red-500 text-xs ml-4">{{ form.mensaje.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit"
+                            class="group w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xs tracking-[0.3em] uppercase hover:bg-yellow-400 hover:text-slate-900 shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4">
+                            ENVIAR MENSAJE
+                            <span
+                                class="material-icons text-sm group-hover:translate-x-2 transition-transform">send</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Estilos globales para los inputs generados por Django */
+    input[type="text"],
+    input[type="email"],
+    select,
+    textarea {
+        width: 100% !important;
+        background-color: #f8fafc !important;
+        border: 2px solid #f1f5f9 !important;
+        border-radius: 1.5rem !important;
+        padding: 1.25rem 1.75rem !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        transition: all 0.3s ease !important;
+        outline: none !important;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+        background-color: white !important;
+        border-color: #EAB308 !important;
+        /* Tailwind yellow-500 */
+        box-shadow: 0 10px 25px -5px rgba(234, 179, 8, 0.2) !important;
+    }
+
+    textarea {
+        min-height: 150px;
+        resize: none;
+    }
+
+    /* Estilo del Select */
+    select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 1.5rem center !important;
+        background-size: 1.2rem !important;
+    }
+</style>
+
+{% endblock %}
