@@ -26,12 +26,89 @@
 
     <div class="grid lg:grid-cols-3 gap-12">
         <div class="lg:col-span-2 space-y-10">
+            <form method="get" class="flex items-center gap-3">
+                {% if request.GET.salida %}
+                <input type="hidden" name="salida" value="{{ request.GET.salida }}">
+                {% endif %}
+                <label class="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Moneda</label>
+                <select name="currency" onchange="this.form.submit()"
+                        class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+                    {% for code in currency_options %}
+                    <option value="{{ code }}" {% if code == currency_code %}selected{% endif %}>{{ code }}</option>
+                    {% endfor %}
+                </select>
+            </form>
             <section>
                 <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
                     <span class="w-8 h-1 bg-primary rounded-full"></span>
                     Descripción del Recorrido
                 </h2>
                 <p class="text-slate-600 text-lg leading-relaxed">{{ tour.descripcion }}</p>
+            </section>
+
+            <section id="comentarios" class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 space-y-6">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900 mb-2">Comentarios de viajeros</h2>
+                    <p class="text-slate-500 text-sm">Comparte tu experiencia y ayuda a otros turistas.</p>
+                </div>
+
+                {% if user.is_authenticated %}
+                <form method="post" action="{% url 'crear_resena' tour.id %}" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] mb-2">Tu puntuacion</label>
+                            <select name="puntuacion" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-700 appearance-none outline-none focus:ring-4 focus:ring-primary/10" required>
+                                <option value="" disabled selected>Elegir...</option>
+                                <option value="5">5 - Excelente</option>
+                                <option value="4">4 - Muy bueno</option>
+                                <option value="3">3 - Bueno</option>
+                                <option value="2">2 - Regular</option>
+                                <option value="1">1 - Malo</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] mb-2">Tu comentario</label>
+                            <textarea name="comentario" rows="4" placeholder="Cuenta tu experiencia..." class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10" required></textarea>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-full font-black text-xs shadow-lg">
+                            ENVIAR COMENTARIO
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm text-slate-600">
+                    Inicia sesion para dejar un comentario.
+                    <a href="{% url 'login' %}?next={{ request.path }}#comentarios" class="text-primary font-bold ml-2">Entrar</a>
+                </div>
+                {% endif %}
+
+                <div class="space-y-4">
+                    {% if resenas %}
+                        {% for resena in resenas %}
+                        <div class="border border-slate-100 rounded-2xl p-5">
+                            <div class="flex items-center justify-between">
+                                <p class="font-bold text-slate-800">
+                                    {{ resena.usuario.first_name|default:resena.usuario.username }}
+                                </p>
+                                <span class="text-xs text-slate-400">{{ resena.fecha|date:"d/m/Y" }}</span>
+                            </div>
+                            <div class="flex items-center gap-1 text-amber-400 mt-2">
+                                {% for i in "12345" %}
+                                    <span class="material-icons text-base">
+                                        {% if forloop.counter <= resena.puntuacion %}star{% else %}star_border{% endif %}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                            <p class="text-slate-600 text-sm mt-3">{{ resena.comentario }}</p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-sm text-slate-500">Aun no hay comentarios. Se el primero en compartir tu experiencia.</p>
+                    {% endif %}
+                </div>
             </section>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -111,13 +188,23 @@
                         <div class="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl">
                             <div class="flex justify-between items-center opacity-40 text-[10px] font-black mb-2">
                                 <span>TOTAL ESTIMADO</span>
-                                <span>${{ tour.precio }} c/u</span>
+                                <span>{{ currency_code }}</span>
                             </div>
                             <div class="flex justify-between items-end">
                                 <span class="text-sm font-bold uppercase">Monto</span>
-                                <span class="text-4xl font-black text-primary leading-none">$<span id="totalPagar">0.00</span></span>
+                                <span class="text-4xl font-black text-primary leading-none">{{ currency_code }} <span id="totalPagar">0.00</span></span>
                             </div>
+                            <div class="mt-3 text-[10px] uppercase tracking-widest opacity-60 font-black flex justify-between">
+                                <span>Adulto: {{ currency_code }} {{ precio_adulto|floatformat:2 }}</span>
+                                <span>Niño: {{ currency_code }} {{ precio_nino|floatformat:2 }}</span>
+                            </div>
+                            {% if currency_code != payment_currency %}
+                            <p class="text-[10px] mt-3 opacity-60">
+                                Pago se procesa en {{ payment_currency }} al tipo de cambio referencial.
+                            </p>
+                            {% endif %}
                         </div>
+
 
                         <p id="error-msg" class="hidden text-xs font-bold text-red-500 bg-red-50 p-4 rounded-2xl text-center border border-red-100"></p>
 
@@ -187,7 +274,8 @@
 </div>
 
 <script>
-    const precioBase = parseFloat("{{ tour.precio }}".replace(',', '.'));
+    const precioAdulto = parseFloat("{{ precio_adulto }}".replace(',', '.'));
+    const precioNino = parseFloat("{{ precio_nino }}".replace(',', '.'));
     const usuarioLogueado = {{ user.is_authenticated|yesno:"true,false" }};
     
     function cambiar(idInput, delta) {
@@ -214,7 +302,7 @@
         const ad = parseInt(document.getElementById('adultos').value) || 0;
         const ni = parseInt(document.getElementById('ninos').value) || 0;
         const totalPersonas = ad + ni;
-        const totalDinero = totalPersonas * precioBase;
+        const totalDinero = (ad * precioAdulto) + (ni * precioNino);
         
         document.getElementById('totalPagar').innerText = totalDinero.toLocaleString('en-US', {minimumFractionDigits: 2});
         if (totalPersonas > 0) document.getElementById('error-msg').classList.add('hidden');
