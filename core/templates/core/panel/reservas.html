@@ -3,137 +3,155 @@
 
 {% block content %}
 <div class="bg-slate-50 min-h-screen py-10 relative">
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
+        <!-- HEADER -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
-                <a href="{% url 'panel_admin' %}" class="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold text-xs uppercase tracking-widest mb-3 transition-colors">
-                    <span class="material-icons text-sm">arrow_back</span> Volver al Panel
-                </a>
                 <h1 class="text-4xl font-black text-slate-900 tracking-tight italic">
-                    RESERVAS<span class="text-blue-600 text-sm align-top ml-1">ADMIN</span>
+                    RESERVAS<span class="text-primary text-sm align-top ml-1">ADMIN</span>
                 </h1>
                 <p class="text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em] mt-1">
-                    Control operativo de expediciones y pagos
+                    Control operativo de expediciones
                 </p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-3">
                 <div class="relative group">
-                    <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">search</span>
-                    <input type="text" id="reservaSearch" placeholder="Buscar ID, pasajero o tour..."
-                        class="pl-12 pr-6 py-3.5 bg-white border border-slate-200 rounded-2xl w-full md:w-80 shadow-sm focus:ring-4 focus:ring-blue-600/10 focus:border-blue-600 outline-none font-semibold text-slate-700 transition-all"
+                    <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary">search</span>
+                    <input type="text" id="reservaSearch" placeholder="Buscar ID, cliente o tour..."
+                        class="pl-12 pr-6 py-3.5 bg-white border border-slate-200 rounded-2xl w-full md:w-80 shadow-sm focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-slate-700"
                         onkeyup="filterReservas()">
                 </div>
 
                 <button onclick="window.location.reload()"
-                    class="bg-white border border-slate-200 p-3.5 rounded-2xl shadow-sm hover:bg-slate-50 hover:text-blue-600 transition-all active:scale-90"
-                    title="Actualizar lista">
+                    class="bg-white border border-slate-200 p-3.5 rounded-2xl shadow-sm hover:bg-slate-50 hover:text-primary transition">
                     <span class="material-icons">refresh</span>
                 </button>
             </div>
         </div>
 
-        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <!-- TABLA -->
+        <div class="bg-white rounded-[2.5rem] shadow border border-slate-100 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
+                    
                     <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-[0.3em]">
                         <tr>
                             <th class="px-8 py-7">Ref.</th>
                             <th class="px-8 py-7">Pasajero</th>
-                            <th class="px-8 py-7">Tour / Fecha</th>
+                            <th class="px-8 py-7">Tour</th>
                             <th class="px-8 py-7">Total</th>
                             <th class="px-8 py-7 text-center">Estado</th>
-                            <th class="px-8 py-7 text-right">Gestión</th>
+                            <th class="px-8 py-7 text-center">Gestión</th>
                         </tr>
                     </thead>
 
                     <tbody class="divide-y divide-slate-50 text-sm">
                         {% for r in reservas %}
-                        <tr class="reserva-row hover:bg-slate-50/80 transition-all duration-200">
+                        <tr class="reserva-row hover:bg-slate-50">
 
-                            <td class="px-8 py-6 text-slate-400 font-mono font-bold">
+                            <td class="px-8 py-6 text-slate-400 font-mono">
                                 #{{ r.id|stringformat:"05d" }}
                             </td>
 
-                            <td class="px-8 py-6">
-                                <div class="flex flex-col">
-                                    <span class="font-black text-slate-900">{{ r.nombre }} {{ r.apellidos }}</span>
-                                    <span class="text-[11px] text-slate-400 font-medium">{{ r.correo }}</span>
-                                </div>
+                            <td class="px-8 py-6 font-bold">
+                                {{ r.nombre }} {{ r.apellidos }}
                             </td>
 
-                            <td class="px-8 py-6">
-                                <div class="flex flex-col">
-                                    <span class="italic font-bold text-slate-700">{{ r.salida.tour.nombre }}</span>
-                                    <span class="text-[11px] text-blue-600 font-bold uppercase tracking-tighter">
-                                        {{ r.salida.fecha|date:"d M, Y" }}
-                                    </span>
-                                </div>
+                            <td class="px-8 py-6 italic">
+                                {{ r.salida.tour.nombre }}
                             </td>
 
-                            <td class="px-8 py-6">
-                                <span class="text-slate-900 font-black text-base">${{ r.total_pagar }}</span>
+                            <td class="px-8 py-6 font-bold">
+                                ${{ r.total_pagar }}
                             </td>
 
+                            <!-- ESTADO -->
                             <td class="px-8 py-6 text-center">
-                                <span class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest
-                                    {% if r.estado == 'pendiente' %}bg-amber-100 text-amber-700 border border-amber-200
-                                    {% elif r.estado == 'pagada' %}bg-emerald-100 text-emerald-700 border border-emerald-200
-                                    {% elif r.estado == 'cancelada' %}bg-rose-100 text-rose-700 border border-rose-200{% endif %}">
-                                    {{ r.estado }}
+                                <span class="px-3 py-1 rounded-lg text-xs font-bold
+                                    {% if r.estado == "cancelada" %}bg-red-100 text-red-700
+                                    {% elif r.estado == "pagada" or r.tiene_pago %}bg-green-100 text-green-700
+                                    {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                                    
+                                    {% if r.estado == "pagada" or r.tiene_pago %}
+                                        pagada
+                                    {% else %}
+                                        {{ r.estado }}
+                                    {% endif %}
                                 </span>
                             </td>
 
-                            <td class="px-8 py-6 text-right">
-                                <div class="flex items-center justify-end gap-3">
-                                    {% if r.estado == "pagada" %}
-                                        <a href="{% url 'ver_ticket_pdf' r.id %}" target="_blank"
-                                           class="inline-flex items-center gap-2 bg-slate-900 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-slate-900/10">
-                                            <span class="material-icons text-sm">picture_as_pdf</span>
-                                            VOUCHER
-                                        </a>
-                                    {% else %}
-                                        <form method="post" action="{% url 'cambiar_estado_reserva' r.id %}" class="flex items-center gap-2">
-                                            {% csrf_token %}
-                                            <select name="estado" class="bg-slate-100 border-none rounded-lg px-3 py-2 text-[11px] font-bold focus:ring-2 focus:ring-blue-600 outline-none transition-all">
-                                                <option value="pendiente" {% if r.estado == "pendiente" %}selected{% endif %}>Pendiente</option>
-                                                <option value="pagada" {% if r.estado == "pagada" %}selected{% endif %}>Pagada</option>
-                                                <option value="cancelada" {% if r.estado == "cancelada" %}selected{% endif %}>Cancelada</option>
-                                            </select>
-                                            <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20" title="Actualizar">
-                                                <span class="material-icons text-sm">done</span>
-                                            </button>
-                                        </form>
-                                    {% endif %}
+                            <!-- GESTIÓN -->
+                            <td class="px-8 py-6 text-center">
+
+                                {% if r.estado == "pagada" or r.tiene_pago %}
+                                <div class="inline-flex items-center gap-2">
+                                    <a href="{% url 'ver_ticket_pdf' r.id %}" target="_blank"
+                                       class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs">
+                                       Ver PDF
+                                    </a>
+                                    <form method="post" action="{% url 'eliminar_reserva' r.id %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                            class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">
+                                            Eliminar
+                                        </button>
+                                    </form>
                                 </div>
+
+                                {% else %}
+                                <form method="post" action="{% url 'cambiar_estado_reserva' r.id %}">
+                                    {% csrf_token %}
+
+                                    <select name="estado" class="border rounded px-2 py-1 text-xs">
+
+                                        <option value="pendiente" {% if r.estado == "pendiente" %}selected{% endif %}>
+                                            Pendiente
+                                        </option>
+
+                                        <option value="pagada" {% if r.estado == "pagada" %}selected{% endif %}>
+                                            Pagada
+                                        </option>
+
+                                        <option value="cancelada" {% if r.estado == "cancelada" %}selected{% endif %}>
+                                            Cancelada
+                                        </option>
+
+                                    </select>
+
+                                    <button type="submit"
+                                        class="bg-slate-900 text-white px-2 py-1 rounded text-xs ml-2">
+                                        Guardar
+                                    </button>
+                                    <button type="submit" formmethod="post" formaction="{% url 'eliminar_reserva' r.id %}"
+                                        class="bg-red-600 text-white px-2 py-1 rounded text-xs ml-2">
+                                        Eliminar
+                                    </button>
+                                </form>
+                                {% endif %}
+
                             </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="px-8 py-32 text-center">
-                                <div class="flex flex-col items-center opacity-20">
-                                    <span class="material-icons text-6xl mb-4">history_edu</span>
-                                    <p class="font-black uppercase tracking-[0.3em] text-xs text-slate-500">No hay registros de reserva</p>
-                                </div>
-                            </td>
+
                         </tr>
                         {% endfor %}
                     </tbody>
+
                 </table>
             </div>
         </div>
     </div>
 </div>
 
+<!-- BUSCADOR -->
 <script>
 function filterReservas() {
     const filter = document.getElementById('reservaSearch').value.toLowerCase();
     const rows = document.getElementsByClassName('reserva-row');
 
     for (let row of rows) {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(filter) ? "" : "none";
+        row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
     }
 }
 </script>

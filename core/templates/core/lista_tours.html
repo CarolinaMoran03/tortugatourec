@@ -12,7 +12,22 @@
                 <span class="text-slate-900 font-bold">{{ personas }} personas</span>
             </p>
         </div>
+
     </div>
+
+
+    <form method="get" class="mb-8 flex items-center gap-3">
+        <input type="hidden" name="destino" value="{{ request.GET.destino }}">
+        <input type="hidden" name="fecha" value="{{ request.GET.fecha }}">
+        <input type="hidden" name="personas" value="{{ request.GET.personas }}">
+        <label class="text-[10px] font-black uppercase text-slate-500 tracking-[0.15em]">Moneda</label>
+        <select name="currency" onchange="this.form.submit()"
+                class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+            {% for code in currency_options %}
+            <option value="{{ code }}" {% if code == currency_code %}selected{% endif %}>{{ code }}</option>
+            {% endfor %}
+        </select>
+    </form>
 
     <div class="grid gap-10">
         {% for tour, salidas in tours_con_salidas.items %}
@@ -30,8 +45,9 @@
                     <div class="flex justify-between items-start mb-6">
                         <h3 class="text-3xl font-black text-slate-900 leading-none tracking-tighter uppercase">{{ tour.nombre }}</h3>
                         <div class="text-right">
-                            <span class="text-3xl font-black text-primary">${{ tour.precio }}</span>
-                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">USD / Persona</p>
+                            <span class="text-3xl font-black text-primary">{{ currency_code }} {{ tour.precio_adulto_display|floatformat:2 }}</span>
+                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">Adulto</p>
+                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">NiÃ±o: {{ currency_code }} {{ tour.precio_nino_display|floatformat:2 }}</p>
                         </div>
                     </div>
                     
@@ -74,7 +90,7 @@
                     </div>
 
                     <a id="btn-reserva-{{ tour.id }}" 
-                       href="{% url 'tour_detalle' tour.id %}?salida={{ salidas.0.id }}" 
+                       href="{% url 'tour_detalle' tour.id %}?salida={{ salidas.0.id }}&currency={{ currency_code }}" 
                        class="group relative bg-slate-900 text-white px-10 py-4 rounded-[1.5rem] font-black text-xs tracking-widest transition-all hover:bg-primary shadow-xl shadow-slate-200 overflow-hidden">
                         <span class="relative z-10 flex items-center gap-2">
                             RESERVAR AHORA 
@@ -108,7 +124,7 @@
         const btn = document.getElementById(`btn-reserva-${tourId}`);
         // Construimos la URL base de Django y añadimos el parámetro de salida
         const baseUrl = "{% url 'tour_detalle' 0 %}".replace('0', tourId);
-        btn.href = `${baseUrl}?salida=${salidaId}`;
+        btn.href = `${baseUrl}?salida=${salidaId}&currency={{ currency_code }}`;
         
         // Efecto visual de feedback
         btn.classList.add('scale-95');

@@ -25,6 +25,8 @@ class Tour(models.Model):
     destino = models.ForeignKey(Destino, on_delete=models.CASCADE, related_name="tours")
     descripcion = models.TextField()
     precio = models.DecimalField(max_digits=8, decimal_places=2)
+    precio_adulto = models.DecimalField(max_digits=8, decimal_places=2, default=0, blank=True)
+    precio_nino = models.DecimalField(max_digits=8, decimal_places=2, default=0, blank=True)
     lemonsqueezy_variant_id = models.CharField(max_length=50, blank=True, default="")
     # Nota: Los campos cupo_maximo y disponibles aquí suelen ser una referencia general
     cupo_maximo = models.PositiveIntegerField(default=15)
@@ -32,6 +34,12 @@ class Tour(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.destino.nombre}"
+
+    def precio_adulto_final(self):
+        return self.precio_adulto if self.precio_adulto and self.precio_adulto > 0 else self.precio
+
+    def precio_nino_final(self):
+        return self.precio_nino if self.precio_nino and self.precio_nino > 0 else self.precio
 
 class SalidaTour(models.Model):
     tour = models.ForeignKey(Tour, on_delete=models.CASCADE, related_name="salidas")

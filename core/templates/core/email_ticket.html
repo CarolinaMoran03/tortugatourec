@@ -1,136 +1,124 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
-
 <head>
     <style>
         body {
-            font-family: 'Helvetica', Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: "Helvetica", Arial, sans-serif;
+            background-color: #f4f6f8;
             margin: 0;
             padding: 0;
         }
-
         .container {
             max-width: 600px;
             margin: 20px auto;
             background: #ffffff;
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
         }
-
         .header {
             background: #0f172a;
-            padding: 30px;
+            padding: 28px 30px;
             text-align: center;
             color: white;
         }
-
         .content {
             padding: 30px;
-            color: #333;
+            color: #1f2937;
             line-height: 1.6;
         }
-
         .tour-box {
             background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            padding: 20px;
-            border-radius: 12px;
-            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+            padding: 18px;
+            border-radius: 8px;
+            margin: 18px 0;
         }
-
-        .info-grid {
-            border-top: 1px solid #eee;
-            margin-top: 15px;
-            padding-top: 15px;
-        }
-
-        .info-item {
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
-
         .footer {
             background: #f1f5f9;
-            padding: 25px;
+            padding: 18px;
             text-align: center;
             font-size: 12px;
             color: #64748b;
         }
-
+        .button {
+            display: inline-block;
+            padding: 12px 22px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-top: 16px;
+        }
         .status-badge {
             display: inline-block;
-            padding: 6px 14px;
+            padding: 5px 12px;
             background: #dcfce7;
             color: #166534;
-            border-radius: 50px;
+            border-radius: 999px;
             font-size: 11px;
             font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.08em;
         }
-
         .label {
-            color: #64748b;
-            font-weight: bold;
+            color: #6b7280;
+            font-size: 12px;
             text-transform: uppercase;
-            font-size: 11px;
-            margin-right: 5px;
+            letter-spacing: 0.1em;
+            font-weight: bold;
+        }
+        .value {
+            font-weight: bold;
+            color: #0f172a;
         }
     </style>
 </head>
-
 <body>
     <div class="container">
         <div class="header">
-            <h1 style="margin:0; letter-spacing: -1px; font-size: 28px;">TORTUGATOUR</h1>
-            <p style="margin:5px 0 0 0; opacity: 0.8; font-size: 14px;">¡Tu aventura está confirmada!</p>
+            <h1 style="margin:0; letter-spacing:-1px;">TORTUGATOUR</h1>
+            <p style="margin:6px 0 0 0; opacity:0.7; font-size:14px;">Tu próxima aventura comienza aquí</p>
         </div>
-
         <div class="content">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <div class="status-badge">Pago Verificado ✓</div>
-            </div>
-            
-            <h2 style="color: #0f172a; margin-top: 0;">¡Hola, {{ reserva.nombre }} {{ reserva.apellidos }}!</h2>
-            <p>Es un gusto confirmarte que tu reserva en <strong>TortugaTour</strong> se ha procesado con éxito. Aquí tienes los detalles de tu próximo viaje:</p>
+            <div class="status-badge">Reserva confirmada y pagada</div>
+            <h2 style="color:#0f172a; margin-top:14px;">¡Hola, {{ reserva.nombre }}!</h2>
+            <p>Gracias por confiar en <strong>TortugaTour</strong>. Tu reserva quedó registrada y el pago fue confirmado.</p>
 
             <div class="tour-box">
-                <h3 style="margin-top:0; color: #2563eb; font-size: 20px;">{{ reserva.salida.tour.nombre }}</h3>
-                
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 5px 0;"><span class="label">Fecha:</span> <strong>{{ reserva.salida.fecha|date:"d M Y" }}</strong></td>
-                        <td style="padding: 5px 0;"><span class="label">Hora de Salida:</span> <strong>{{ reserva.salida.hora|time:"H:i" }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 5px 0;"><span class="label">Pasajeros:</span> <strong>{{ reserva.adultos }} Adulto(s) {% if reserva.ninos %}, {{ reserva.ninos }} Niño(s){% endif %}</strong></td>
-                        <td style="padding: 5px 0;"><span class="label">Total:</span> <strong style="color: #0f172a;">${{ reserva.total_pagar }}</strong></td>
-                    </tr>
-                </table>
+                <p class="label">Referencia</p>
+                <p class="value">#{{ reserva.id|stringformat:"06d" }}</p>
 
-                <div class="info-grid">
-                    <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #0f172a;">DATOS DEL CONTACTO:</p>
-                    <div class="info-item"><span class="label">Nombre completo:</span> {{ reserva.nombre }} {{ reserva.apellidos }}</div>
-                    <div class="info-item"><span class="label">Identificación:</span> {{ reserva.identificacion }}</div>
-                    <div class="info-item"><span class="label">Correo:</span> {{ reserva.correo }}</div>
-                    <div class="info-item"><span class="label">WhatsApp:</span> {{ reserva.telefono }}</div>
-                </div>
+                <p class="label" style="margin-top:12px;">Tour</p>
+                <p class="value">{{ reserva.salida.tour.nombre }}</p>
+
+                <p class="label" style="margin-top:12px;">Fecha y hora</p>
+                <p class="value">
+                    {{ reserva.salida.fecha|date:"d M Y" }}
+                    {% if reserva.salida.hora %} - {{ reserva.salida.hora|time:"H:i" }}{% endif %}
+                </p>
+
+                <p class="label" style="margin-top:12px;">Pasajeros</p>
+                <p class="value">{{ reserva.adultos }} Adulto(s){% if reserva.ninos %}, {{ reserva.ninos }} Niño(s){% endif %}</p>
+
+                <p class="label" style="margin-top:12px;">Total pagado</p>
+                <p class="value" style="font-size:18px;">${{ reserva.total_pagar }}</p>
             </div>
 
-            <p style="font-size: 14px; color: #475569;">
-                <strong>Importante:</strong> Hemos adjuntado tu <strong>Voucher PDF</strong>. Te recomendamos guardarlo en tu celular. Por favor, llega al punto de encuentro 15 minutos antes de la hora indicada.
-            </p>
-        </div>
+            <p>Adjuntamos tu <strong>voucher oficial</strong> en PDF. Preséntalo al momento del check-in.</p>
 
+            <center>
+                <a href="{{ site_url }}{% url 'ticket_reserva' reserva.id %}" class="button">Ver mi reserva</a>
+                {% if whatsapp_number %}
+                <a href="https://wa.me/{{ whatsapp_number }}" class="button" style="background:#16a34a; margin-left:8px;">WhatsApp</a>
+                {% endif %}
+            </center>
+        </div>
         <div class="footer">
-            <p><strong>TortugaTour Agency</strong><br>
-            Av. Amazonas N32-123, Quito - Ecuador<br>
-            Soporte: info@tortugatour.com | +593 2 255 400</p>
-            <p style="margin-top: 15px; opacity: 0.6;">&copy; 2026 Todos los derechos reservados.</p>
+            <p>Soporte: {{ agencia_email|default:"info@tortugatour.com" }}</p>
+            <p>&copy; 2026 TortugaTour Agency. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>
-
 </html>

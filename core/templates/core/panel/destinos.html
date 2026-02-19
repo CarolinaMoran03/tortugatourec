@@ -2,37 +2,24 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-6 py-10 bg-slate-50 min-h-screen">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
-        <div>
-            <h1 class="text-3xl font-black text-slate-900 tracking-tight">
-                Gestión de <span class="text-blue-600">Destinos</span>
-            </h1>
-            <p class="text-slate-500 text-sm">Administra los lugares disponibles para tus tours.</p>
-        </div>
-        
-        <a href="{% url 'panel_admin' %}" class="inline-flex items-center gap-2 bg-white border border-slate-200 px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm">
-            <span class="material-icons text-sm">arrow_back</span>
-            Volver al Panel
-        </a>
+    <div class="flex items-center gap-4 mb-8">
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Gestión de <span class="text-primary">Destinos</span></h1>
     </div>
-
+    
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div class="lg:col-span-1">
             <div class="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
                 <h2 class="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                    <span class="material-icons text-blue-600">add_location_alt</span>
+                    <span class="material-icons text-primary">add_location_alt</span>
                     Añadir Nuevo
                 </h2>
-                
                 <form method="post" class="space-y-4">
                     {% csrf_token %}
-                    <div class="form-container">
+                    <div class="space-y-2">
                         {{ form.as_p }}
                     </div>
-                    
-                    <button type="submit" class="w-full bg-slate-900 text-white font-bold px-6 py-4 rounded-2xl mt-4 hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-blue-900/10 flex items-center justify-center gap-2">
-                        <span class="material-icons text-sm">save</span> 
-                        Guardar Destino
+                    <button type="submit" class="w-full bg-slate-900 text-white font-bold px-6 py-3 rounded-2xl mt-4 hover:bg-primary transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                        <span class="material-icons text-sm">save</span> Guardar Destino
                     </button>
                 </form>
             </div>
@@ -52,19 +39,19 @@
                         <tr class="group hover:bg-slate-50/80 transition-all duration-300">
                             <td class="px-8 py-5">
                                 <div class="flex items-center gap-3">
-                                    <span class="material-icons text-slate-300 group-hover:text-blue-600 transition-colors">location_on</span>
+                                    <span class="material-icons text-slate-300 group-hover:text-primary transition-colors">location_on</span>
                                     <span class="font-bold text-slate-700">{{ destino.nombre }}</span>
                                 </div>
                             </td>
                             <td class="px-8 py-5">
-                                <div class="flex items-center justify-center gap-3">
+                                <div class="flex items-center justify-center gap-2">
                                     <a href="{% url 'editar_destino' destino.id %}" 
                                        class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-all" 
                                        title="Editar">
                                         <span class="material-icons text-lg">edit</span>
                                     </a>
 
-                                    <form action="{% url 'eliminar_destino' destino.id %}" method="post" class="inline" onsubmit="return confirmDelete('{{ destino.nombre }}')">
+                                    <form action="{% url 'eliminar_destino' destino.id %}" method="post" onsubmit="return confirmDelete('{{ destino.nombre }}')">
                                         {% csrf_token %}
                                         <button type="submit" 
                                                 class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" 
@@ -78,10 +65,8 @@
                         {% empty %}
                         <tr>
                             <td colspan="2" class="px-8 py-20 text-center">
-                                <div class="flex flex-col items-center">
-                                    <span class="material-icons text-6xl text-slate-200 mb-4">map</span>
-                                    <p class="text-slate-400 font-medium">No hay destinos registrados aún.</p>
-                                </div>
+                                <span class="material-icons text-5xl text-slate-200 mb-2">map</span>
+                                <p class="text-slate-400 font-medium">No hay destinos registrados aún.</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -94,12 +79,13 @@
 
 <script>
     function confirmDelete(nombre) {
-        return confirm(`¿Estás seguro de que deseas eliminar el destino "${nombre}"? Esta acción borrará también los tours asociados a este lugar.`);
+        return confirm(`¿Estás seguro de que deseas eliminar el destino "${nombre}"? Esta acción no se puede deshacer.`);
     }
 </script>
 
 <style>
-    .form-container p label {
+    /* Estilizar los labels del formulario de Django */
+    form p label {
         display: block;
         font-size: 0.75rem;
         font-weight: 800;
@@ -108,23 +94,20 @@
         margin-bottom: 0.5rem;
         letter-spacing: 0.05em;
     }
-    .form-container p input, 
-    .form-container p select, 
-    .form-container p textarea {
+    form p input, form p select, form p textarea {
         width: 100%;
-        padding: 0.85rem 1.25rem;
+        padding: 0.75rem 1rem;
         border-radius: 1rem;
         border: 1px solid #e2e8f0;
         background-color: #f8fafc;
         outline: none;
-        transition: all 0.3s ease;
-        margin-bottom: 1.5rem;
-        font-size: 0.95rem;
+        transition: all 0.3s;
+        margin-bottom: 1rem;
     }
-    .form-container p input:focus {
-        border-color: #2563eb; /* Blue-600 */
+    form p input:focus {
+        border-color: #FF5A5F; /* Color primario */
         background-color: #fff;
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        ring: 4px rgba(255, 90, 95, 0.1);
     }
 </style>
 {% endblock %}

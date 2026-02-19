@@ -3,99 +3,81 @@
 {% block title %}Gestión de Tours | TortugaTour{% endblock %}
 
 {% block content %}
-<div class="bg-slate-50 min-h-screen py-10 font-sans">
+<div class="bg-slate-50 min-h-screen py-12">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div class="flex items-center justify-between mb-10">
             <div>
-                <h1 class="text-4xl font-black text-slate-900 tracking-tighter flex items-center gap-3 uppercase">
-                    <span class="material-icons text-blue-600 text-4xl">travel_explore</span>
-                    Catálogo de <span class="text-blue-600">Tours</span>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                    <span class="material-icons text-primary text-4xl">beach_access</span>
+                    Gestión de Tours
                 </h1>
-                <p class="text-slate-500 font-medium mt-1">Configura precios, destinos y detalles de tus experiencias.</p>
+                <p class="text-slate-500 mt-1">Crea nuevas experiencias y asígnalas a un destino.</p>
             </div>
-            <a href="{% url 'panel_admin' %}" class="inline-flex items-center gap-2 bg-white border-2 border-slate-100 px-6 py-3 rounded-2xl font-black text-[10px] text-slate-500 hover:text-blue-600 hover:border-blue-100 transition-all uppercase tracking-widest shadow-sm">
-                <span class="material-icons text-sm">dashboard</span>
-                Panel Principal
+            <a href="{% url 'panel_admin' %}" class="bg-white border border-slate-200 px-6 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition">
+                Volver al Panel
             </a>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            <div class="lg:col-span-4">
-                <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
-                    <h2 class="text-xl font-black text-slate-900 mb-6 flex items-center gap-2 uppercase tracking-tight">
-                        <span class="w-2 h-6 bg-blue-600 rounded-full"></span>
-                        Nuevo Tour
-                    </h2>
-                    
-                    <form method="post" class="space-y-5">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1">
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 sticky top-6">
+                    <h2 class="text-xl font-bold text-slate-900 mb-6">Nuevo Tour</h2>
+                    <form method="post" class="space-y-4">
                         {% csrf_token %}
                         {% for field in form %}
-                        <div class="space-y-1.5">
-                            <label class="block text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">
-                                {{ field.label }}
-                            </label>
-                            <div class="relative">
-                                {{ field }}
-                            </div>
+                        <div>
+                            <label class="block text-xs font-black uppercase text-slate-400 mb-1 ml-1">{{ field.label }}</label>
+                            {{ field }}
                         </div>
                         {% endfor %}
-
-                        <button type="submit" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs tracking-[0.2em] hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 mt-4 uppercase flex items-center justify-center gap-2 group">
-                            CREAR EXPERIENCIA
-                            <span class="material-icons text-sm group-hover:translate-x-1 transition-transform">add_task</span>
+                        <button type="submit" class="w-full py-4 bg-primary text-white rounded-xl font-black hover:bg-slate-900 transition-all shadow-lg shadow-primary/20 mt-4">
+                            CREAR TOUR
                         </button>
                     </form>
                 </div>
             </div>
 
-            <div class="lg:col-span-8">
-                <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-100">
-                                <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Tour</th>
-                                <th class="px-6 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ubicación</th>
-                                <th class="px-6 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Tarifa</th>
-                                <th class="px-8 py-6 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Gestión</th>
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="p-5 text-xs font-black uppercase text-slate-400">Tour</th>
+                                <th class="p-5 text-xs font-black uppercase text-slate-400">Destino</th>
+                                <th class="p-5 text-xs font-black uppercase text-slate-400">Precio</th>
+                                <th class="p-5 text-xs font-black uppercase text-slate-400">Variant Lemon</th>
+                                <th class="p-5 text-xs font-black uppercase text-slate-400">Cupos</th>
+                                <th class="p-5 text-xs font-black uppercase text-slate-400">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-50">
+                        <tbody class="divide-y divide-slate-100">
                             {% for tour in tours %}
-                            <tr class="group hover:bg-slate-50/50 transition-all">
-                                <td class="px-8 py-6">
-                                    <div class="font-black text-slate-900 uppercase tracking-tight text-sm group-hover:text-blue-600 transition-colors">
-                                        {{ tour.nombre }}
-                                    </div>
-                                    <div class="text-[11px] text-slate-400 font-medium italic mt-0.5 line-clamp-1 w-64">
-                                        {{ tour.descripcion }}
-                                    </div>
+                            <tr class="hover:bg-slate-50/50 transition">
+                                <td class="p-5">
+                                    <div class="font-bold text-slate-900">{{ tour.nombre }}</div>
+                                    <div class="text-xs text-slate-400 truncate w-48">{{ tour.descripcion }}</div>
                                 </td>
-                                <td class="px-6 py-6">
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-tighter border border-blue-100/50">
-                                        <span class="material-icons text-[12px]">place</span>
-                                        {{ tour.destino.nombre }}
-                                    </span>
+                                <td class="p-5 text-sm text-slate-600">
+                                    <span class="px-2 py-1 bg-slate-100 rounded-md">{{ tour.destino.nombre }}</span>
                                 </td>
-                                <td class="px-6 py-6 text-center">
-                                    <span class="text-sm font-black text-slate-900">${{ tour.precio }}</span>
+                                <td class="p-5 font-black text-slate-900">
+                                    <div>${{ tour.precio_adulto|default:tour.precio }}</div>
+                                    <div class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Adulto</div>
+                                    <div class="mt-2">${{ tour.precio_nino|default:tour.precio }}</div>
+                                    <div class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">NiÃ±o</div>
                                 </td>
-                                <td class="px-8 py-6 text-right">
-                                    <a href="{% url 'editar_tour' tour.id %}" class="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-slate-900/10 active:scale-95">
-                                        <span class="material-icons text-sm">edit</span>
+                                <td class="p-5 text-sm text-slate-500">{{ tour.lemonsqueezy_variant_id|default:"-" }}</td>
+                                <td class="p-5 text-sm text-slate-500">{{ tour.cupo_maximo }}</td>
+                                <td class="p-5">
+                                    <a href="{% url 'editar_tour' tour.id %}" class="inline-flex items-center px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition">
                                         Editar
                                     </a>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4" class="px-8 py-24 text-center">
-                                    <div class="flex flex-col items-center opacity-20">
-                                        <span class="material-icons text-6xl mb-2">auto_awesome_motion</span>
-                                        <p class="font-black uppercase tracking-[0.3em] text-xs">Aún no hay experiencias</p>
-                                    </div>
-                                </td>
+                                <td colspan="6" class="p-20 text-center text-slate-400">No hay tours creados.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -105,25 +87,4 @@
         </div>
     </div>
 </div>
-
-<style>
-    /* Estilos globales para inputs generados por Django */
-    input[type="text"], input[type="number"], select, textarea {
-        width: 100%;
-        background-color: #f8fafc;
-        border: 2px solid #f1f5f9;
-        border-radius: 1.25rem;
-        padding: 0.85rem 1.25rem;
-        font-weight: 700;
-        color: #1e293b;
-        transition: all 0.3s;
-        outline: none;
-        font-size: 0.85rem;
-    }
-    input:focus, select:focus, textarea:focus {
-        border-color: #2563eb;
-        background-color: white;
-        box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.05);
-    }
-</style>
 {% endblock %}

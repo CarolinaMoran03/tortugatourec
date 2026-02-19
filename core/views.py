@@ -20,7 +20,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from .models import Destino, Tour, SalidaTour, Reserva, Pago
+from .models import Destino, Tour, SalidaTour, Reserva, Pago, Resena
 from .utils import generar_ticket_pdf
 from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm
 
@@ -33,10 +33,17 @@ logger = logging.getLogger(__name__)
 def home(request):
     destinos = Destino.objects.all()
     tours_destacados = Tour.objects.all()[:3]
+    currency_code, currency_rate = _currency_context(request)
+    for tour in tours_destacados:
+        display = _tour_price_display(tour, currency_rate)
+        tour.precio_adulto_display = display["adulto"]
+        tour.precio_nino_display = display["nino"]
 
     context = {
         "destinos": destinos,
         "tours_destacados": tours_destacados,
+        "currency_code": currency_code,
+        "currency_options": list(getattr(settings, "CURRENCY_RATES", {}).keys()),
     }
 
     return render(request, "core/home.html", context)
@@ -44,10 +51,17 @@ def home(request):
 def tours(request):
     tours = Tour.objects.select_related("destino").all()
     destinos = Destino.objects.all()
+    currency_code, currency_rate = _currency_context(request)
+    for tour in tours:
+        display = _tour_price_display(tour, currency_rate)
+        tour.precio_adulto_display = display["adulto"]
+        tour.precio_nino_display = display["nino"]
 
     context = {
         "tours": tours,
         "destinos": destinos,
+        "currency_code": currency_code,
+        "currency_options": list(getattr(settings, "CURRENCY_RATES", {}).keys()),
     }
     return render(request, "core/tours.html", context)
 
@@ -72,10 +86,18 @@ def lista_tours(request):
             tours_con_salidas[s.tour] = []
         tours_con_salidas[s.tour].append(s)
 
+    currency_code, currency_rate = _currency_context(request)
+    for tour in tours_con_salidas.keys():
+        display = _tour_price_display(tour, currency_rate)
+        tour.precio_adulto_display = display["adulto"]
+        tour.precio_nino_display = display["nino"]
+
     return render(request, "core/lista_tours.html", {
         "tours_con_salidas": tours_con_salidas,
         "fecha_busqueda": fecha,
-        "personas": personas
+        "personas": personas,
+        "currency_code": currency_code,
+        "currency_options": list(getattr(settings, "CURRENCY_RATES", {}).keys()),
     })
 
 # ============================================
@@ -136,8 +158,10 @@ def tour_detalle(request, pk):
                 messages.error(request, error_msg)
                 return redirect('tour_detalle', pk=pk)
 
-            # Calcular total a pagar
-            total_pagar = total_personas * tour.precio
+            # Calcular total a pagar (adulto/niño)
+            precio_adulto = tour.precio_adulto_final()
+            precio_nino = tour.precio_nino_final()
+            total_pagar = (adultos * precio_adulto) + (ninos * precio_nino)
 
             # Crear la reserva con estado PENDIENTE (hasta que pague)
             reserva = Reserva.objects.create(
@@ -174,10 +198,51 @@ def tour_detalle(request, pk):
             messages.error(request, error_msg)
             return redirect('tour_detalle', pk=pk)
 
+    resenas = tour.resenas.select_related("usuario").order_by("-fecha")
+
+    currency_code, currency_rate = _currency_context(request)
+    price_display = _tour_price_display(tour, currency_rate)
+    precio_adulto = price_display["adulto"]
+    precio_nino = price_display["nino"]
+
     return render(request, "core/tour_detalle.html", {
         "tour": tour,
         "salidas": salidas,
+        "resenas": resenas,
+        "currency_code": currency_code,
+        "currency_rate": str(currency_rate),
+        "precio_adulto": precio_adulto,
+        "precio_nino": precio_nino,
+        "payment_currency": _currency(),
+        "currency_options": list(getattr(settings, "CURRENCY_RATES", {}).keys()),
+        "whatsapp_message": f"Hola, quiero informacion del tour {tour.nombre}",
     })
+
+@login_required
+@require_POST
+def crear_resena(request, pk):
+    tour = get_object_or_404(Tour, pk=pk)
+    comentario = (request.POST.get("comentario") or "").strip()
+    try:
+        puntuacion = int(request.POST.get("puntuacion", "0"))
+    except ValueError:
+        puntuacion = 0
+
+    if puntuacion < 1 or puntuacion > 5:
+        messages.error(request, "La puntuacion debe estar entre 1 y 5.")
+        return redirect("tour_detalle", pk=pk)
+    if not comentario:
+        messages.error(request, "Escribe un comentario antes de enviar.")
+        return redirect("tour_detalle", pk=pk)
+
+    Resena.objects.create(
+        usuario=request.user,
+        tour=tour,
+        puntuacion=puntuacion,
+        comentario=comentario,
+    )
+    messages.success(request, "Gracias por compartir tu experiencia.")
+    return redirect("tour_detalle", pk=pk)
 
 def ticket_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
@@ -297,7 +362,15 @@ def panel_admin(request):
 @login_required
 @user_passes_test(es_admin)
 def admin_reservas(request):
-    reservas = Reserva.objects.select_related("salida__tour").order_by("-id")
+    Reserva.objects.filter(pagos__estado="paid").exclude(estado="pagada").update(estado="pagada")
+
+    reservas = (
+        Reserva.objects.select_related("salida__tour")
+        .prefetch_related("pagos")
+        .order_by("-id")
+    )
+    for reserva in reservas:
+        reserva.tiene_pago = any(pago.estado == "paid" for pago in reserva.pagos.all())
     return render(request, "core/panel/reservas.html", {"reservas": reservas})
 
 @login_required
@@ -310,6 +383,17 @@ def cambiar_estado_reserva(request, reserva_id):
             reserva.estado = nuevo_estado
             reserva.save()
             messages.success(request, f"Reserva #{reserva.id} actualizada correctamente.")
+    return redirect("admin_reservas")
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_reserva(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if request.method == "POST":
+        reserva_id = reserva.id
+        nombre = f"{reserva.nombre} {reserva.apellidos}".strip() or "Cliente"
+        reserva.delete()
+        messages.success(request, f"Reserva #{reserva_id} de {nombre} eliminada correctamente.")
     return redirect("admin_reservas")
 
 @login_required
@@ -537,12 +621,31 @@ def checkout_redirect(request):
     return redirect("tours")
 
 
-def _site_url(request):
+def _site_url(request=None):
+    if request is None:
+        return getattr(settings, "SITE_URL", "").rstrip("/")
     return getattr(settings, "SITE_URL", request.build_absolute_uri("/").rstrip("/"))
 
 
 def _currency():
     return getattr(settings, "PAYMENT_DEFAULT_CURRENCY", "USD").upper()
+
+def _currency_context(request):
+    rates = getattr(settings, "CURRENCY_RATES", {}) or {}
+    default = _currency()
+    code = (request.GET.get("currency") or default).upper()
+    if code not in rates:
+        code = default
+    rate = Decimal(str(rates.get(code, 1)))
+    return code, rate
+
+def _tour_price_display(tour, currency_rate):
+    precio_adulto = tour.precio_adulto_final()
+    precio_nino = tour.precio_nino_final()
+    return {
+        "adulto": precio_adulto * currency_rate,
+        "nino": precio_nino * currency_rate,
+    }
 
 
 def _amount_minor_units(amount):
@@ -556,16 +659,29 @@ def _send_ticket_email(reserva):
         pdf_content = pdf_buffer.getvalue()
         pdf_buffer.close()
         subject = f"Confirmacion de Reserva #{reserva.id:06d} - TortugaTour"
-        html_body = render_to_string("core/email_ticket.html", {"reserva": reserva})
+        html_body = render_to_string(
+            "core/email_ticket.html",
+            {
+                "reserva": reserva,
+                "site_url": _site_url(request=None),
+                "whatsapp_number": getattr(settings, "WHATSAPP_NUMBER", ""),
+                "agencia_email": getattr(settings, "AGENCIA_EMAIL", ""),
+            },
+        )
         recipient = reserva.correo or (reserva.usuario.email if reserva.usuario else "")
-        if not recipient:
+        agencia_email = getattr(settings, "AGENCIA_EMAIL", "")
+        if not recipient and not agencia_email:
             return
+
+        to_list = [recipient] if recipient else []
+        bcc_list = [agencia_email] if agencia_email and agencia_email != recipient else []
 
         email_cliente = EmailMessage(
             subject=subject,
             body=html_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[recipient],
+            to=to_list or [agencia_email],
+            bcc=bcc_list,
         )
         email_cliente.content_subtype = "html"
         email_cliente.attach(f"Ticket_TortugaTour_{reserva.id}.pdf", pdf_content, "application/pdf")
@@ -742,10 +858,12 @@ def create_lemonsqueezy_checkout(request, reserva_id):
 
     site_url = _site_url(request)
     currency = _currency()
+    custom_price = _amount_minor_units(reserva.total_pagar)
     checkout_payload = {
         "data": {
             "type": "checkouts",
             "attributes": {
+                "custom_price": custom_price,
                 "checkout_data": {
                     "custom": {
                         "reserva_id": str(reserva.id),
@@ -815,6 +933,8 @@ def create_lemonsqueezy_checkout(request, reserva_id):
         checkout_url=checkout_url,
         payload=data,
     )
+    if getattr(settings, "FORCE_EMAIL_ON_CREATED", False):
+        _send_ticket_email(reserva)
     return redirect(checkout_url, permanent=False)
 
 
@@ -863,6 +983,8 @@ def create_paypal_order(request, reserva_id):
         external_id=order_id,
         payload=body,
     )
+    if getattr(settings, "FORCE_EMAIL_ON_CREATED", False):
+        _send_ticket_email(reserva)
     return JsonResponse({"orderID": order_id})
 
 
@@ -982,5 +1104,4 @@ def paypal_webhook(request):
                 logger.exception("Fallo confirmando webhook PayPal para reserva %s", reserva_id)
                 return HttpResponse(status=500)
     return HttpResponse(status=200)
-
 

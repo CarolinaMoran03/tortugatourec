@@ -79,6 +79,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.whatsapp_number',
             ],
         },
     },
@@ -168,4 +169,25 @@ PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_WEBHOOK_ID = os.getenv("PAYPAL_WEBHOOK_ID", "")
 PAYPAL_ENV = os.getenv("PAYPAL_ENV", "sandbox")
+
+WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "")
+
+# Solo para pruebas: envia el correo aun cuando el pago este en "created".
+FORCE_EMAIL_ON_CREATED = os.getenv("FORCE_EMAIL_ON_CREATED", "false").lower() == "true"
+
+def _parse_currency_rates(raw):
+    rates = {}
+    for item in (raw or "").split(","):
+        item = item.strip()
+        if not item or ":" not in item:
+            continue
+        code, val = item.split(":", 1)
+        code = code.strip().upper()
+        try:
+            rates[code] = float(val.strip())
+        except ValueError:
+            continue
+    return rates
+
+CURRENCY_RATES = _parse_currency_rates(os.getenv("CURRENCY_RATES", "USD:1,EUR:0.93,MXN:17"))
 
