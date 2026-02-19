@@ -306,6 +306,8 @@ def procesar_pago(request):
             
             # Actualizar la reserva a PAGADA
             reserva.estado = 'pagada'
+            if email:
+                reserva.correo = email.strip().lower()
             reserva.save()
             
             # AHORA SÍ descontamos los cupos
@@ -690,10 +692,27 @@ def _send_ticket_email(reserva):
         logger.exception("No se pudo enviar ticket para la reserva %s", reserva.id)
 
 
+def _extract_customer_email(proveedor, payload):
+    if not isinstance(payload, dict):
+        return ""
+    if proveedor == "paypal":
+        payer = payload.get("payer", {}) or {}
+        return (payer.get("email_address") or "").strip().lower()
+    if proveedor == "lemonsqueezy":
+        data = payload.get("data", {}) or {}
+        attributes = data.get("attributes", {}) or {}
+        if attributes.get("user_email"):
+            return (attributes.get("user_email") or "").strip().lower()
+        first_order_item = (attributes.get("first_order_item") or {}) if isinstance(attributes, dict) else {}
+        return (first_order_item.get("user_email") or "").strip().lower()
+    return ""
+
+
 def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
     with transaction.atomic():
         reserva = Reserva.objects.select_for_update().select_related("salida").get(id=reserva_id)
         salida = SalidaTour.objects.select_for_update().get(id=reserva.salida_id)
+        customer_email = _extract_customer_email(proveedor, payload or {})
         pago = None
         if external_id:
             pago = (
@@ -711,6 +730,9 @@ def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
             )
 
         if reserva.estado == "pagada":
+            if customer_email and reserva.correo != customer_email:
+                reserva.correo = customer_email
+                reserva.save(update_fields=["correo"])
             if pago and pago.estado != "paid":
                 pago.estado = "paid"
                 pago.payload = payload or pago.payload
@@ -726,7 +748,11 @@ def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
             raise ValueError("No hay cupos suficientes al confirmar el pago.")
 
         reserva.estado = "pagada"
-        reserva.save(update_fields=["estado"])
+        if customer_email:
+            reserva.correo = customer_email
+            reserva.save(update_fields=["estado", "correo"])
+        else:
+            reserva.save(update_fields=["estado"])
 
         salida.cupos_disponibles -= personas
         salida.save(update_fields=["cupos_disponibles"])

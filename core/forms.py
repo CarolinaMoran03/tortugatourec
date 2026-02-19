@@ -53,6 +53,14 @@ class RegistroTuristaForm(UserCreationForm):
         model = User
         fields = ['username', 'first_name', 'email']
 
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.first_name = self.cleaned_data.get("first_name", "").strip()
+        user.email = self.cleaned_data.get("email", "").strip().lower()
+        if commit:
+            user.save()
+        return user
+
     def clean_password1(self):
         password = self.cleaned_data.get("password1")
         
