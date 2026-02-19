@@ -1,13 +1,21 @@
 {% extends "core/base.html" %}
+{% block title %}Editar Salida | TortugaTour{% endblock %}
+
 {% block content %}
 <div class="max-w-2xl mx-auto py-12 px-4">
     <div class="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
-        <div class="mb-8">
-            <h1 class="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-2">Editar Salida</h1>
-            <p class="text-slate-500 font-medium">Tour: {{ salida.tour.nombre }}</p>
+        <div class="mb-8 flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-2">Editar Salida</h1>
+                <p class="text-slate-500 font-medium">Tour: <span class="text-primary">{{ salida.tour.nombre }}</span></p>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 px-4 py-2 rounded-2xl text-center">
+                <span class="block text-[8px] font-black text-slate-400 uppercase tracking-widest">Cupo Destino</span>
+                <span class="text-lg font-black text-slate-700" id="cupo-heredado">{{ salida.tour.destino.cupo_maximo|default:salida.tour.cupo_maximo }}</span>
+            </div>
         </div>
         
-        <form method="post" class="space-y-6">
+        <form method="post" class="space-y-6" id="salida-form">
             {% csrf_token %}
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -26,26 +34,61 @@
 
             <div class="grid grid-cols-2 gap-6 border-t border-slate-50 pt-6">
                 <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-2 tracking-widest">Cupo Máximo</label>
-                    <input type="number" name="cupo_maximo" value="{{ salida.cupo_maximo }}" 
+                    <div class="flex justify-between items-center mb-2 px-2">
+                        <label class="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Cupo Máximo</label>
+                        <button type="button" onclick="resetCupo()" class="text-[9px] font-bold text-primary hover:underline">Resetear</button>
+                    </div>
+                    <input type="number" name="cupo_maximo" id="input-cupo-maximo" value="{{ salida.cupo_maximo }}" 
                            class="w-full bg-slate-50 border-slate-100 rounded-2xl py-3 px-4 font-semibold text-slate-700 focus:ring-2 focus:ring-primary focus:bg-white transition-all">
                 </div>
                 <div>
                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-2 tracking-widest">Disponibles</label>
                     <input type="number" name="cupos_disponibles" value="{{ salida.cupos_disponibles }}" 
-                           class="w-full bg-slate-50 border-slate-100 rounded-2xl py-3 px-4 font-semibold text-slate-700 focus:ring-2 focus:ring-primary focus:bg-white transition-all">
+                           class="w-full bg-slate-100 border-slate-100 rounded-2xl py-3 px-4 font-semibold text-slate-400 focus:ring-2 focus:ring-primary focus:bg-white transition-all">
+                    <p class="text-[9px] text-slate-400 mt-2 ml-2 italic">* Ajustar solo en caso de sobreventa o bloqueo manual.</p>
                 </div>
             </div>
 
             <div class="pt-6 flex flex-col sm:flex-row gap-4">
-                <button type="submit" class="flex-1 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs tracking-widest hover:bg-primary transition-all shadow-lg shadow-slate-200 uppercase">
-                    Guardar Cambios
+                <button type="submit" class="flex-1 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs tracking-widest hover:bg-primary transition-all shadow-lg shadow-slate-200 uppercase flex items-center justify-center gap-2">
+                    <span class="material-icons text-sm">check_circle</span> Guardar Cambios
                 </button>
-                <a href="{% url 'admin_salidas' %}" class="flex-1 bg-slate-100 text-slate-500 px-8 py-4 rounded-2xl font-black text-xs tracking-widest hover:bg-slate-200 transition-all text-center uppercase">
-                    Cancelar
+                <a href="{% url 'admin_salidas' %}" class="flex-1 bg-slate-100 text-slate-500 px-8 py-4 rounded-2xl font-black text-xs tracking-widest hover:bg-slate-200 transition-all text-center uppercase flex items-center justify-center gap-2">
+                    <span class="material-icons text-sm">cancel</span> Cancelar
                 </a>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+    // Función para resetear el cupo al valor heredado del destino
+    function resetCupo() {
+        const cupoBase = document.getElementById('cupo-heredado').innerText;
+        const inputCupo = document.getElementById('input-cupo-maximo');
+        inputCupo.value = cupoBase;
+        
+        // Animación visual de feedback
+        inputCupo.classList.add('ring-2', 'ring-primary');
+        setTimeout(() => {
+            inputCupo.classList.remove('ring-2', 'ring-primary');
+        }, 500);
+    }
+
+    // Lógica opcional: Si es una salida nueva y el cupo está en 0 o vacío, heredar automáticamente
+    window.onload = function() {
+        const inputCupo = document.getElementById('input-cupo-maximo');
+        if (!inputCupo.value || inputCupo.value == "0") {
+            resetCupo();
+        }
+    }
+</script>
+
+<style>
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+</style>
 {% endblock %}

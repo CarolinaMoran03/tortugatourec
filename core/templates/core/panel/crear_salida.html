@@ -1,13 +1,24 @@
 {% extends "core/base.html" %}
+{% block title %}Programar Nueva Salida | TortugaTour{% endblock %}
+
 {% block content %}
 <div class="bg-slate-50 min-h-screen py-12">
     <div class="max-w-4xl mx-auto px-4">
         
         <nav class="flex mb-8" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3 text-sm text-slate-500 font-medium">
-                <li><a href="{% url 'admin_salidas' %}" class="hover:text-primary transition">Gestión de Salidas</a></li>
+                <li class="inline-flex items-center">
+                    <a href="{% url 'panel_admin' %}" class="text-slate-500 hover:text-primary transition">
+                        <span class="material-icons text-xs mr-1">dashboard</span>
+                        Panel Principal
+                    </a>
+                </li>
+                <li class="flex items-center">
+                    <span class="material-icons text-xs mx-1">chevron_right</span>
+                    <a href="{% url 'admin_salidas' %}" class="hover:text-primary transition">Gestión de Salidas</a>
+                </li>
                 <li class="flex items-center gap-1">
-                    <span class="material-icons text-sm">chevron_right</span>
+                    <span class="material-icons text-xs">chevron_right</span>
                     <span class="text-slate-900 font-bold">Nueva Salida</span>
                 </li>
             </ol>
@@ -22,17 +33,17 @@
                 <p class="text-slate-400 text-sm mt-1">Define la fecha, el horario y la disponibilidad del tour.</p>
             </div>
 
-            <form method="post" class="p-8 space-y-6">
+            <form method="post" class="p-8 space-y-6" id="salidaForm">
                 {% csrf_token %}
 
                 <div>
                     <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Tour a Programar</label>
                     <div class="relative">
                         <span class="material-icons absolute left-3 top-3 text-slate-400">map</span>
-                        <select name="tour" required class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none appearance-none transition font-medium text-slate-700">
+                        <select name="tour" id="tourSelect" required class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition font-medium text-slate-700">
                             <option value="" disabled selected>Elige un tour de la lista...</option>
                             {% for t in tours %}
-                                <option value="{{ t.id }}">{{ t.nombre }} — {{ t.destino.nombre }}</option>
+                                <option value="{{ t.id }}" data-cupo="{{ t.cupo_maximo }}">{{ t.nombre }} — {{ t.destino.nombre }}</option>
                             {% endfor %}
                         </select>
                         <span class="material-icons absolute right-3 top-3 text-slate-300 pointer-events-none">expand_more</span>
@@ -58,11 +69,16 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Cupo de Personas</label>
+                    <div id="cupoContainer">
+                        <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">
+                            Cupo de Personas
+                            <span class="text-primary ml-1" id="cupoSourceInfo" title="Este valor se cargó automáticamente desde la configuración del tour">
+                                <span class="material-icons text-xs align-middle">info_outline</span>
+                            </span>
+                        </label>
                         <div class="relative">
                             <span class="material-icons absolute left-3 top-3 text-slate-400">groups</span>
-                            <input type="number" name="cupo_maximo" placeholder="Ej: 15" required min="1"
+                            <input type="number" id="cupoMaximo" name="cupo_maximo" placeholder="Ej: 15" required min="1"
                                    class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-900 font-bold">
                         </div>
                     </div>
@@ -73,15 +89,98 @@
                         <span class="material-icons">save</span> Publicar Salida
                     </button>
                     <a href="{% url 'admin_salidas' %}" class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition text-center flex items-center justify-center">
-                        Descartar
+                        <span class="material-icons mr-2">close</span> Descartar
                     </a>
                 </div>
             </form>
         </div>
         
-        <p class="text-center text-slate-400 text-xs mt-8">
-            Los cupos disponibles se sincronizarán automáticamente con el cupo máximo al crear la salida.
-        </p>
+        <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5 mt-8">
+            <div class="flex items-start gap-3">
+                <span class="material-icons text-blue-500">info</span>
+                <div>
+                    <p class="text-blue-700 text-sm">
+                        El <strong>cupo máximo</strong> se carga automáticamente desde la configuración del tour seleccionado. 
+                        Puedes modificarlo según las necesidades específicas de esta salida.
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+    // Script para cargar automáticamente el cupo máximo desde el tour seleccionado
+    document.addEventListener('DOMContentLoaded', function() {
+        const tourSelect = document.getElementById('tourSelect');
+        const cupoInput = document.getElementById('cupoMaximo');
+        const cupoContainer = document.getElementById('cupoContainer');
+        const cupoInfo = document.getElementById('cupoSourceInfo');
+        
+        // Función para actualizar el cupo máximo cuando se selecciona un tour
+        tourSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const tourCupo = selectedOption.getAttribute('data-cupo');
+            
+            if (tourCupo) {
+                // Establece el valor del cupo máximo desde el tour
+                cupoInput.value = tourCupo;
+                
+                // Añade un efecto visual para indicar que el valor se cargó automáticamente
+                cupoContainer.classList.add('bg-primary/5', 'rounded-xl', 'p-3');
+                setTimeout(() => {
+                    cupoContainer.classList.remove('bg-primary/5', 'p-3');
+                }, 2000);
+                
+                // Mostrar el tooltip/indicador
+                cupoInfo.classList.remove('hidden');
+            } else {
+                cupoInput.value = '';
+                cupoInfo.classList.add('hidden');
+            }
+        });
+        
+        // Validación del formulario
+        document.getElementById('salidaForm').addEventListener('submit', function(event) {
+            if (!tourSelect.value) {
+                event.preventDefault();
+                alert('Por favor, selecciona un tour antes de continuar.');
+            }
+            
+            const cupoValue = parseInt(cupoInput.value);
+            if (isNaN(cupoValue) || cupoValue < 1) {
+                event.preventDefault();
+                alert('El cupo máximo debe ser un número mayor que cero.');
+            }
+        });
+    });
+</script>
+
+<style>
+    /* Animación sutil cuando se autocompleta el cupo */
+    @keyframes highlightField {
+        0% { background-color: rgba(var(--color-primary), 0.1); }
+        100% { background-color: transparent; }
+    }
+    
+    /* Tooltip styling */
+    [title] {
+        position: relative;
+        cursor: help;
+    }
+    
+    /* Transiciones suaves */
+    #cupoContainer {
+        transition: all 0.3s ease;
+    }
+    
+    /* Mejora el contraste de los inputs y selects */
+    select, input {
+        font-size: 0.95rem;
+    }
+    
+    select:focus, input:focus {
+        box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2);
+    }
+</style>
 {% endblock %}

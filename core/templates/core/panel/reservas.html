@@ -2,8 +2,8 @@
 {% block title %}Gestión de Reservas | TortugaTour{% endblock %}
 
 {% block content %}
-<div class="bg-slate-50 min-h-screen py-10 relative">
 
+<div class="bg-slate-50 min-h-screen py-10 relative">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <!-- HEADER -->
@@ -17,26 +17,37 @@
                 </p>
             </div>
 
-            <div class="flex items-center gap-3">
-                <div class="relative group">
-                    <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary">search</span>
-                    <input type="text" id="reservaSearch" placeholder="Buscar ID, cliente o tour..."
-                        class="pl-12 pr-6 py-3.5 bg-white border border-slate-200 rounded-2xl w-full md:w-80 shadow-sm focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-slate-700"
-                        onkeyup="filterReservas()">
-                </div>
+            <a href="{% url 'panel_admin' %}" 
+               class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 transition-all duration-300 font-bold text-sm shadow-sm">
+                <span class="material-icons text-base">arrow_back</span>
+            </a>
+        </div>
 
-                <button onclick="window.location.reload()"
-                    class="bg-white border border-slate-200 p-3.5 rounded-2xl shadow-sm hover:bg-slate-50 hover:text-primary transition">
-                    <span class="material-icons">refresh</span>
-                </button>
+        <!-- GANANCIAS TOTALES -->
+        <div id="seccion-reporte" class="grid grid-cols-1 mb-10">
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-center">
+                <span class="text-slate-400 text-xs font-bold uppercase tracking-widest">Ganancias Totales</span>
+                <h2 id="total-ganancias-display" class="text-5xl font-black text-slate-900 mt-2">$0.00</h2>
+                <p class="text-green-500 text-xs font-bold mt-2 flex items-center gap-1">
+                    <span class="material-icons text-sm">trending_up</span> Basado en reservas pagadas
+                </p>
+            </div>
+        </div>
+
+        <!-- BUSCADOR SOBRE LA TABLA -->
+        <div class="flex justify-end mb-4">
+            <div class="relative group w-full md:w-80">
+                <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary">search</span>
+                <input type="text" id="reservaSearch" placeholder="Buscar por ref, pasajero o tour..."
+                    class="pl-12 pr-6 py-3 bg-white border border-slate-200 rounded-xl w-full shadow-sm focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-slate-700"
+                    onkeyup="filterReservas()">
             </div>
         </div>
 
         <!-- TABLA -->
         <div class="bg-white rounded-[2.5rem] shadow border border-slate-100 overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    
+                <table class="w-full text-left border-collapse" id="tabla-reservas">
                     <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-[0.3em]">
                         <tr>
                             <th class="px-8 py-7">Ref.</th>
@@ -47,113 +58,78 @@
                             <th class="px-8 py-7 text-center">Gestión</th>
                         </tr>
                     </thead>
-
                     <tbody class="divide-y divide-slate-50 text-sm">
                         {% for r in reservas %}
                         <tr class="reserva-row hover:bg-slate-50">
-
-                            <td class="px-8 py-6 text-slate-400 font-mono">
-                                #{{ r.id|stringformat:"05d" }}
-                            </td>
-
-                            <td class="px-8 py-6 font-bold">
-                                {{ r.nombre }} {{ r.apellidos }}
-                            </td>
-
-                            <td class="px-8 py-6 italic">
-                                {{ r.salida.tour.nombre }}
-                            </td>
-
-                            <td class="px-8 py-6 font-bold">
-                                ${{ r.total_pagar }}
-                            </td>
-
-                            <!-- ESTADO -->
+                            <td class="px-8 py-6 text-slate-400 font-mono">#{{ r.id|stringformat:"05d" }}</td>
+                            <td class="px-8 py-6 font-bold">{{ r.nombre }} {{ r.apellidos }}</td>
+                            <td class="px-8 py-6 italic tour-nombre">{{ r.salida.tour.nombre }}</td>
+                            <td class="px-8 py-6 font-bold monto-total">${{ r.total_pagar }}</td>
                             <td class="px-8 py-6 text-center">
-                                <span class="px-3 py-1 rounded-lg text-xs font-bold
+                                <span class="estado-label px-3 py-1 rounded-lg text-xs font-bold
                                     {% if r.estado == "cancelada" %}bg-red-100 text-red-700
                                     {% elif r.estado == "pagada" or r.tiene_pago %}bg-green-100 text-green-700
                                     {% else %}bg-yellow-100 text-yellow-700{% endif %}">
-                                    
-                                    {% if r.estado == "pagada" or r.tiene_pago %}
-                                        pagada
-                                    {% else %}
-                                        {{ r.estado }}
-                                    {% endif %}
+                                    {% if r.estado == "pagada" or r.tiene_pago %}pagada{% else %}{{ r.estado }}{% endif %}
                                 </span>
                             </td>
-
-                            <!-- GESTIÓN -->
                             <td class="px-8 py-6 text-center">
-
                                 {% if r.estado == "pagada" or r.tiene_pago %}
                                 <div class="inline-flex items-center gap-2">
-                                    <a href="{% url 'ver_ticket_pdf' r.id %}" target="_blank"
-                                       class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs">
-                                       Ver PDF
-                                    </a>
+                                    <a href="{% url 'ver_ticket_pdf' r.id %}" target="_blank" class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs">Ver PDF</a>
                                     <form method="post" action="{% url 'eliminar_reserva' r.id %}" class="inline">
                                         {% csrf_token %}
-                                        <button type="submit"
-                                            class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">
-                                            Eliminar
-                                        </button>
+                                        <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">Eliminar</button>
                                     </form>
                                 </div>
-
                                 {% else %}
                                 <form method="post" action="{% url 'cambiar_estado_reserva' r.id %}">
                                     {% csrf_token %}
-
                                     <select name="estado" class="border rounded px-2 py-1 text-xs">
-
-                                        <option value="pendiente" {% if r.estado == "pendiente" %}selected{% endif %}>
-                                            Pendiente
-                                        </option>
-
-                                        <option value="pagada" {% if r.estado == "pagada" %}selected{% endif %}>
-                                            Pagada
-                                        </option>
-
-                                        <option value="cancelada" {% if r.estado == "cancelada" %}selected{% endif %}>
-                                            Cancelada
-                                        </option>
-
+                                        <option value="pendiente" {% if r.estado == "pendiente" %}selected{% endif %}>Pendiente</option>
+                                        <option value="pagada" {% if r.estado == "pagada" %}selected{% endif %}>Pagada</option>
+                                        <option value="cancelada" {% if r.estado == "cancelada" %}selected{% endif %}>Cancelada</option>
                                     </select>
-
-                                    <button type="submit"
-                                        class="bg-slate-900 text-white px-2 py-1 rounded text-xs ml-2">
-                                        Guardar
-                                    </button>
-                                    <button type="submit" formmethod="post" formaction="{% url 'eliminar_reserva' r.id %}"
-                                        class="bg-red-600 text-white px-2 py-1 rounded text-xs ml-2">
-                                        Eliminar
-                                    </button>
+                                    <button type="submit" class="bg-slate-900 text-white px-2 py-1 rounded text-xs ml-2">Guardar</button>
                                 </form>
                                 {% endif %}
-
                             </td>
-
                         </tr>
                         {% endfor %}
                     </tbody>
-
                 </table>
             </div>
         </div>
+
     </div>
 </div>
 
-<!-- BUSCADOR -->
 <script>
 function filterReservas() {
     const filter = document.getElementById('reservaSearch').value.toLowerCase();
     const rows = document.getElementsByClassName('reserva-row');
-
     for (let row of rows) {
         row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filas = document.querySelectorAll('.reserva-row');
+    let granTotal = 0;
+
+    filas.forEach(fila => {
+        const montoTexto = fila.querySelector('.monto-total').innerText.replace('$', '').replace(',', '').trim();
+        const monto = parseFloat(montoTexto);
+        const estado = fila.querySelector('.estado-label').innerText.toLowerCase();
+
+        if (estado.includes('pagada')) {
+            granTotal += monto;
+        }
+    });
+
+    document.getElementById('total-ganancias-display').innerText =
+        `$${granTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+});
 </script>
 
 {% endblock %}

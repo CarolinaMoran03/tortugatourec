@@ -2,23 +2,34 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-6 py-10 bg-slate-50 min-h-screen">
-    <div class="flex items-center gap-4 mb-8">
-        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Gestión de <span class="text-primary">Destinos</span></h1>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                <span class="material-icons">map</span>
+            </div>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Gestión de <span class="text-primary">Destinos</span></h1>
+        </div>
+        
+        <a href="{% url 'panel_admin' %}"
+           class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 font-bold text-sm">
+            <span class="material-icons text-base">arrow_back</span>
+            Volver al Panel
+        </a>
     </div>
     
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div class="lg:col-span-1">
-            <div class="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
                 <h2 class="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
                     <span class="material-icons text-primary">add_location_alt</span>
                     Añadir Nuevo
                 </h2>
                 <form method="post" class="space-y-4">
                     {% csrf_token %}
-                    <div class="space-y-2">
+                    <div class="django-form-container">
                         {{ form.as_p }}
                     </div>
-                    <button type="submit" class="w-full bg-slate-900 text-white font-bold px-6 py-3 rounded-2xl mt-4 hover:bg-primary transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                    <button type="submit" class="w-full bg-slate-900 text-white font-black px-6 py-4 rounded-2xl mt-4 hover:bg-primary transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center justify-center gap-2 uppercase text-xs tracking-widest">
                         <span class="material-icons text-sm">save</span> Guardar Destino
                     </button>
                 </form>
@@ -26,7 +37,7 @@
         </div>
 
         <div class="lg:col-span-2">
-            <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
+            <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-[0.2em]">
                         <tr>
@@ -39,22 +50,24 @@
                         <tr class="group hover:bg-slate-50/80 transition-all duration-300">
                             <td class="px-8 py-5">
                                 <div class="flex items-center gap-3">
-                                    <span class="material-icons text-slate-300 group-hover:text-primary transition-colors">location_on</span>
-                                    <span class="font-bold text-slate-700">{{ destino.nombre }}</span>
+                                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                                        <span class="material-icons text-sm">location_on</span>
+                                    </div>
+                                    <span class="font-bold text-slate-700 group-hover:text-slate-900 transition-colors">{{ destino.nombre }}</span>
                                 </div>
                             </td>
                             <td class="px-8 py-5">
-                                <div class="flex items-center justify-center gap-2">
+                                <div class="flex items-center justify-center gap-3">
                                     <a href="{% url 'editar_destino' destino.id %}" 
-                                       class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-all" 
+                                       class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-all" 
                                        title="Editar">
                                         <span class="material-icons text-lg">edit</span>
                                     </a>
 
-                                    <form action="{% url 'eliminar_destino' destino.id %}" method="post" onsubmit="return confirmDelete('{{ destino.nombre }}')">
+                                    <form action="{% url 'eliminar_destino' destino.id %}" method="post" onsubmit="return confirmDelete('{{ destino.nombre }}')" class="inline">
                                         {% csrf_token %}
                                         <button type="submit" 
-                                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" 
+                                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" 
                                                 title="Eliminar">
                                             <span class="material-icons text-lg">delete_outline</span>
                                         </button>
@@ -64,9 +77,12 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="2" class="px-8 py-20 text-center">
-                                <span class="material-icons text-5xl text-slate-200 mb-2">map</span>
-                                <p class="text-slate-400 font-medium">No hay destinos registrados aún.</p>
+                            <td colspan="2" class="px-8 py-24 text-center">
+                                <div class="flex flex-col items-center">
+                                    <span class="material-icons text-6xl text-slate-100 mb-4">map</span>
+                                    <p class="text-slate-400 font-bold">No hay destinos registrados aún.</p>
+                                    <p class="text-slate-300 text-sm">Comienza agregando uno en el panel de la izquierda.</p>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -85,29 +101,33 @@
 
 <style>
     /* Estilizar los labels del formulario de Django */
-    form p label {
+    .django-form-container p label {
         display: block;
-        font-size: 0.75rem;
-        font-weight: 800;
+        font-size: 0.7rem;
+        font-weight: 900;
         text-transform: uppercase;
         color: #64748b;
         margin-bottom: 0.5rem;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.1em;
     }
-    form p input, form p select, form p textarea {
+    .django-form-container p input, 
+    .django-form-container p select, 
+    .django-form-container p textarea {
         width: 100%;
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
+        padding: 1rem 1.25rem;
+        border-radius: 1.25rem;
         border: 1px solid #e2e8f0;
         background-color: #f8fafc;
         outline: none;
         transition: all 0.3s;
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
+        font-weight: 500;
+        color: #1e293b;
     }
-    form p input:focus {
-        border-color: #FF5A5F; /* Color primario */
+    .django-form-container p input:focus {
+        border-color: #FF5A5F; /* Tu color primary */
         background-color: #fff;
-        ring: 4px rgba(255, 90, 95, 0.1);
+        box-shadow: 0 0 0 4px rgba(255, 90, 95, 0.1);
     }
 </style>
 {% endblock %}
