@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Destino, Tour, SalidaTour, Reserva, Ticket, Resena, Pago
+from .models import Destino, Tour, SalidaTour, Reserva, Ticket, Resena, Pago, Galeria
 
 
 @admin.register(Destino)
@@ -35,3 +35,8 @@ class ResenaAdmin(admin.ModelAdmin):
 @admin.register(Pago)
 class PagoAdmin(admin.ModelAdmin):
     list_display = ("id", "reserva", "proveedor", "estado", "monto", "moneda", "external_id", "creado_en")
+
+@admin.register(Galeria)
+class GaleriaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'tour', 'fecha_agregada')
+    list_filter = ('tour', 'fecha_agregada')

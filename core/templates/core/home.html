@@ -5,80 +5,94 @@
 {% block content %}
 
 <!-- HERO -->
-<section 
-    class="h-[55vh] flex items-center justify-center text-center text-white relative"
-    style="background-image: url('https://img.goraymi.com/2018/01/08/c93f76a93b2dcb7adb1d4c1c95ed4228_xl.jpg'); background-size: cover; background-position: center;"
->
-    <!-- Overlay oscuro -->
-    <div class="absolute inset-0 bg-black/50"></div>
+<section class="h-[55vh] flex items-center justify-center text-center text-white relative"
+  style="background-image: url('https://img.goraymi.com/2018/01/08/c93f76a93b2dcb7adb1d4c1c95ed4228_xl.jpg'); background-size: cover; background-position: center;">
+  <!-- Overlay oscuro -->
+  <div class="absolute inset-0 bg-black/50"></div>
 
-    <!-- Contenido -->
-    <div class="relative max-w-3xl px-6">
-        <h1 class="text-5xl md:text-6xl font-extrabold mb-6">
-            Descubre la magia de <span class="text-primary">Galápagos</span>
-        </h1>
-        <p class="text-lg mb-8 text-slate-200">
-            Reserva tours increíbles con guías locales certificados y vive una experiencia única.
-        </p>
-        <a href="#" class="bg-primary px-8 py-4 rounded-full font-bold hover:bg-primary-dark transition">
-            Buscar Tours
-        </a>
-    </div>
+  <!-- Contenido -->
+  <div class="relative max-w-3xl px-6">
+    <h1 class="text-5xl md:text-6xl font-extrabold mb-6">
+      Descubre la magia de <span class="text-primary">Galápagos</span>
+    </h1>
+    <p class="text-lg mb-8 text-slate-200">
+      Reserva tours increíbles con guías locales certificados y vive una experiencia única.
+    </p>
+    <a href="#busqueda" onclick="document.getElementById('busqueda').scrollIntoView({behavior: 'smooth'})"
+      class="inline-flex items-center gap-2 bg-primary px-8 py-4 rounded-full font-black text-white hover:bg-white hover:text-primary border-2 border-primary transition-all duration-300 shadow-xl mt-4 uppercase tracking-wider text-sm">
+      <span class="material-icons">travel_explore</span>
+      Encuentra tu Tour
+    </a>
+  </div>
 </section><br>
 
 <!-- BUSCADOR -->
-<section class="max-w-6xl mx-auto -mt-16 bg-white rounded-3xl shadow-2xl p-2 relative z-10 border border-slate-100">
-    <form method="get" action="{% url 'lista_tours' %}" class="grid md:grid-cols-4 gap-2">
-        
-        <div class="relative flex items-center">
-            <span class="material-icons absolute left-4 text-primary">place</span>
-            <select name="destino" class="w-full pl-12 pr-4 py-5 bg-transparent rounded-2xl outline-none appearance-none font-medium text-slate-700" required>
-                <option value="">¿A dónde vas?</option>
-                {% for destino in destinos %}
-                    <option value="{{ destino.id }}">{{ destino.nombre }}</option>
-                {% endfor %}
-            </select>
-        </div>
+<section id="busqueda"
+  class="max-w-6xl mx-auto -mt-16 bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-2 relative z-10 border border-slate-100 dark:border-slate-700 transition-colors duration-300">
+  <form method="get" action="{% url 'lista_tours' %}" class="grid md:grid-cols-4 gap-2">
 
-        <div class="relative flex items-center border-l border-slate-100">
-            <span class="material-icons absolute left-4 text-primary">calendar_month</span>
-            <input type="date" name="fecha" 
-                   class="w-full pl-12 pr-4 py-5 bg-transparent rounded-2xl outline-none font-medium text-slate-700" required>
-        </div>
+    <div class="relative flex items-center">
+      <span class="material-icons absolute left-4 text-primary">place</span>
+      <select name="destino"
+        class="w-full pl-12 pr-4 py-5 bg-transparent rounded-2xl outline-none appearance-none font-medium text-slate-700 dark:text-slate-200"
+        required>
+        <option value="">¿A dónde vas?</option>
+        {% for destino in destinos %}
+        <option value="{{ destino.id }}">{{ destino.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-        <div class="relative flex items-center border-l border-slate-100">
-            <span class="material-icons absolute left-4 text-primary">group</span>
-            <select name="personas" class="w-full pl-12 pr-4 py-5 bg-transparent rounded-2xl outline-none appearance-none font-medium text-slate-700" required>
-                <option value="1">1 Persona</option>
-                <option value="2">2 Personas</option>
-                <option value="3">3 Personas</option>
-                <option value="4">4 Personas</option>
-                <option value="5">10+ Personas</option>
-            </select>
-        </div>
+    <div class="relative flex items-center border-l border-slate-100">
+      <span class="material-icons absolute left-4 text-primary">calendar_month</span>
+      <input type="date" name="fecha" id="search-date"
+        class="w-full pl-12 pr-4 py-5 bg-transparent rounded-2xl outline-none font-medium text-slate-700 dark:text-slate-200"
+        required>
+      <script>
+        // Evitar que el usuario seleccione fechas anteriores a hoy en el buscador
+        document.getElementById('search-date').min = new Date().toISOString().split("T")[0];
+      </script>
+    </div>
 
-        <button type="submit" class="bg-primary text-white m-2 rounded-2xl font-black hover:bg-primary-dark transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/30">
-            <span class="material-icons">search</span>
-            BUSCAR DISPONIBILIDAD
-        </button>
-    </form>
+    <div class="relative flex items-center border-l border-slate-100">
+      <span class="material-icons absolute left-4 text-primary">group</span>
+      <select name="personas"
+        class="w-full pl-12 pr-4 py-5 bg-transparent rounded-2xl outline-none appearance-none font-medium text-slate-700 dark:text-slate-200"
+        required>
+        <option value="1">1 Persona</option>
+        <option value="2">2 Personas</option>
+        <option value="3">3 Personas</option>
+        <option value="4">4 Personas</option>
+        <option value="5">10+ Personas</option>
+      </select>
+    </div>
+
+    <button type="submit"
+      class="bg-primary text-white m-2 rounded-2xl font-black hover:bg-primary-dark transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/30">
+      <span class="material-icons">search</span>
+      BUSCAR DISPONIBILIDAD
+    </button>
+  </form>
 </section>
 
 <!-- porque elegirnos -->
-<section class="py-12 bg-background-light dark:bg-background-dark">
-    <h2 class="text-3xl font-bold mb-10 text-center">¿Por qué elegirnos?</h2>
+<section class="py-12 bg-background-light dark:bg-slate-900">
+  <h2 class="text-3xl font-bold mb-10 text-center text-slate-900 dark:text-white">¿Por qué elegirnos?</h2>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-      
-      <div class="p-6 rounded-xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+
+      <div
+        class="p-6 rounded-xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
         <div class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
           <span class="material-icons text-3xl">eco</span>
         </div>
         <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">100% Ecológico</h3>
-        <p class="text-slate-600 dark:text-slate-400">Priorizamos la sostenibilidad y la conservación en cada recorrido que operamos.</p>
+        <p class="text-slate-600 dark:text-slate-400">Priorizamos la sostenibilidad y la conservación en cada recorrido
+          que operamos.</p>
       </div>
 
-      <div class="p-6 rounded-xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+      <div
+        class="p-6 rounded-xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
         <div class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
           <span class="material-icons text-3xl">people</span>
         </div>
@@ -86,12 +100,14 @@
         <p class="text-slate-600 dark:text-slate-400">Explore con naturalistas certificados nativos de las islas.</p>
       </div>
 
-      <div class="p-6 rounded-xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+      <div
+        class="p-6 rounded-xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
         <div class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
           <span class="material-icons text-3xl">verified_user</span>
         </div>
         <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Seguros y Certificados</h3>
-        <p class="text-slate-600 dark:text-slate-400">Operadores debidamente autorizados que garantizan su seguridad y comodidad en todo momento.</p>
+        <p class="text-slate-600 dark:text-slate-400">Operadores debidamente autorizados que garantizan su seguridad y
+          comodidad en todo momento.</p>
       </div>
 
     </div>
@@ -101,59 +117,62 @@
 
 <!-- TOURS DESTACADOS -->
 <section class="max-w-7xl mx-auto px-6 py-20">
-    <h2 class="text-3xl font-bold mb-10 text-center">Aventuras Destacadas<h3 class="text-center">Experiencias seleccionadas para el explorador que hay en ti.</h3></h2><br>
+  <div class="text-center mb-10">
+    <h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">Aventuras Destacadas</h2>
+    <h3 class="text-slate-500 dark:text-slate-400">Experiencias seleccionadas para el explorador que hay en ti.</h3>
+  </div>
 
-    <div class="grid md:grid-cols-3 gap-8">
-        {% for tour in tours_destacados %}
-        <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden">
-            
-            <!-- Imagen del destino -->
-            <div class="h-48 w-full overflow-hidden">
-                {% if tour.destino.imagen_url %}
-                <img 
-                    src="{{ tour.destino.imagen_url }}" 
-                    alt="{{ tour.destino.nombre }}"
-                    class="w-full h-full object-cover"
-                >
-                {% else %}
-                <div class="h-48 flex items-center justify-center bg-slate-200 text-slate-500">
-                    Sin imagen
-                </div>
-                {% endif %}
-            </div>
+  <div class="grid md:grid-cols-3 gap-8">
+    {% for tour in tours_destacados %}
+    <div
+      class="bg-white dark:bg-slate-800 rounded-xl shadow hover:shadow-lg transition overflow-hidden border border-transparent dark:border-slate-700">
 
-            <!-- Contenido -->
-            <div class="p-6">
-                <h3 class="font-bold text-xl mb-2">{{ tour.nombre }}</h3>
-                <p class="text-slate-600 text-sm mb-4">
-                    {{ tour.descripcion|truncatechars:100 }}
-                </p>
-                <div class="flex justify-between items-center">
-                    <span class="font-bold text-primary">${{ tour.precio }}</span>
-                    <a href="{% url 'tour_detalle' tour.id %}" 
-                    class="text-sm font-semibold text-primary hover:underline">
-                        Ver detalles
-                    </a>
-                </div>
-            </div>
+      <!-- Imagen del destino -->
+      <div class="h-48 w-full overflow-hidden">
+        {% if tour.destino.imagen_url %}
+        <img src="{{ tour.destino.imagen_url }}" alt="{{ tour.destino.nombre }}" class="w-full h-full object-cover">
+        {% else %}
+        <div
+          class="h-48 flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+          Sin imagen
         </div>
-        {% empty %}
-        <p class="col-span-3 text-center text-slate-500">
-            No hay tours disponibles.
+        {% endif %}
+      </div>
+
+      <!-- Contenido -->
+      <div class="p-6">
+        <h3 class="font-bold text-xl mb-2 text-slate-900 dark:text-white">{{ tour.nombre }}</h3>
+        <p class="text-slate-600 dark:text-slate-400 text-sm mb-4">
+          {{ tour.descripcion|truncatechars:100 }}
         </p>
-        {% endfor %}
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-primary">${{ tour.precio }}</span>
+          <a href="{% url 'tour_detalle' tour.id %}" class="text-sm font-semibold text-primary hover:underline">
+            Ver detalles
+          </a>
+        </div>
+      </div>
     </div>
+    {% empty %}
+    <p class="col-span-3 text-center text-slate-500">
+      No hay tours disponibles.
+    </p>
+    {% endfor %}
+  </div>
 </section>
 
 <!-- TESTIMONIOS -->
- <section class="py-20 bg-ocean-mist/30 dark:bg-surface-dark border-y border-slate-200 dark:border-slate-800">
+<section class="py-20 bg-ocean-mist/30 dark:bg-surface-dark border-y border-slate-200 dark:border-slate-800">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
     <span class="material-icons text-6xl text-primary/20 mb-6">format_quote</span>
     <h2 class="text-3xl md:text-5xl font-bold text-slate-800 dark:text-white mb-8 leading-tight">
-      "Un sueño hecho realidad. TortugaTour se encargó de todo a la perfección, permitiéndonos centrarnos en la impresionante vida silvestre."
+      "Un sueño hecho realidad. TortugaTour se encargó de todo a la perfección, permitiéndonos centrarnos en la
+      impresionante vida silvestre."
     </h2>
     <div class="flex items-center justify-center gap-4">
-      <img alt="Retrato de una viajera sonriente" class="w-16 h-16 rounded-full object-cover border-2 border-primary" data-alt="Portrait of a smiling woman traveler" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvBOeLKFhoXh4KbNUxP5ynaXF_v3PRL4xEgf--yc3Ek4pIqXtibf1U8InY2JaQ2RimGKhRXIbsewRjTUDbq35Mw_uC8q1PAbqN1gEZipQ4QGtfLNOzSfdPoc4BCu6zuRwseDl6aZnyuNirxPKU2htAa2U9iWZ63mGJO_d68gh7LI_AWGv9BMI9lqbibLHuw_DQi4HTr4LQ_MK8UQ8VXAL18uxCeeOK-L0EzA5zUxr5xRWPOHF02t0GYPIgKjA-hTkf1Wtww6mY3tIv"/>
+      <img alt="Retrato de una viajera sonriente" class="w-16 h-16 rounded-full object-cover border-2 border-primary"
+        data-alt="Portrait of a smiling woman traveler"
+        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvBOeLKFhoXh4KbNUxP5ynaXF_v3PRL4xEgf--yc3Ek4pIqXtibf1U8InY2JaQ2RimGKhRXIbsewRjTUDbq35Mw_uC8q1PAbqN1gEZipQ4QGtfLNOzSfdPoc4BCu6zuRwseDl6aZnyuNirxPKU2htAa2U9iWZ63mGJO_d68gh7LI_AWGv9BMI9lqbibLHuw_DQi4HTr4LQ_MK8UQ8VXAL18uxCeeOK-L0EzA5zUxr5xRWPOHF02t0GYPIgKjA-hTkf1Wtww6mY3tIv" />
       <div class="text-left">
         <div class="font-bold text-slate-900 dark:text-white">Andrea Contreras</div>
         <div class="text-sm text-slate-500 dark:text-slate-400">Viajó en octubre de 2024</div>
@@ -163,14 +182,28 @@
 </section>
 
 <!-- CTA FINAL -->
- <section class="py-24 relative overflow-hidden">
+<section class="py-24 relative overflow-hidden">
   <div class="absolute inset-0 bg-slate-900">
-    <img alt="Vista aérea de la costa con agua turquesa" class="w-full h-full object-cover opacity-40" data-alt="Aerial view of coastline with turquoise water" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQ3oz5-Yf4kuq08KMFcdM6_IkaeH5X7gf_Yg5JgF53gLUL1kDF8coQsLrpVKxfHrNZ9F9hOBqC26nCienzYbP4sGAFWk0ub_vBOJTiDcb41hFz-dA4rxQ75Pf9wG-Zn6JxRcjhHYSxF0bYUclLO_2Yp0WooFTfaZ5cO0MffcMzRZFprYraoBkPGfeO1mseq7L3FmNWDfOTLJJqs6IDK1CCsEr2vPak-uJwC27d_Kn5M4-DmahgA7V4lG471eJJ1r5ssFatvzmOTt5M"/>
+    <img alt="Vista aérea de la costa con agua turquesa" class="w-full h-full object-cover opacity-40"
+      data-alt="Aerial view of coastline with turquoise water"
+      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQ3oz5-Yf4kuq08KMFcdM6_IkaeH5X7gf_Yg5JgF53gLUL1kDF8coQsLrpVKxfHrNZ9F9hOBqC26nCienzYbP4sGAFWk0ub_vBOJTiDcb41hFz-dA4rxQ75Pf9wG-Zn6JxRcjhHYSxF0bYUclLO_2Yp0WooFTfaZ5cO0MffcMzRZFprYraoBkPGfeO1mseq7L3FmNWDfOTLJJqs6IDK1CCsEr2vPak-uJwC27d_Kn5M4-DmahgA7V4lG471eJJ1r5ssFatvzmOTt5M" />
   </div>
   <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
     <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">¿Listo para tu aventura?</h2>
-    <p class="text-xl text-slate-200 mb-10 max-w-2xl mx-auto">Reserva hoy tu experiencia en Galápagos y crea recuerdos para toda la vida.</p>
+    <p class="text-xl text-slate-200 mb-10 max-w-2xl mx-auto">Reserva hoy tu experiencia en Galápagos y crea recuerdos
+      para toda la vida.</p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'lista_tours' %}"
+        class="bg-primary hover:bg-white hover:text-primary border-2 border-primary text-white font-black py-4 px-10 rounded-full transition-all duration-300 shadow-xl shadow-primary/30 uppercase tracking-widest text-sm flex items-center justify-center gap-2 group">
+        <span
+          class="material-icons group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform">explore</span>
+        Explorar todos los destinos
+      </a>
+      <a href="{% url 'contacto' %}"
+        class="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 text-white font-black py-4 px-10 rounded-full transition-all duration-300 shadow-xl uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+        <span class="material-icons">support_agent</span>
+        Llamar a un asesor
+      </a>
     </div>
   </div>
 </section>

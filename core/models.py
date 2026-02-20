@@ -136,3 +136,34 @@ class Resena(models.Model):
 
     def __str__(self):
         return f"{self.tour.nombre} - {self.puntuacion}⭐"
+
+#imagenes
+from django.db import models
+
+class Galeria(models.Model):
+    tour = models.ForeignKey(Tour, on_delete=models.CASCADE, related_name='fotos', null=True, blank=True)
+    imagen = models.ImageField(upload_to='galeria_tours/', blank=True, null=True, help_text="Sube una foto local (desde tu PC)")
+    imagen_url = models.URLField(max_length=500, blank=True, null=True, help_text="O pega el enlace de Drive/Photos/Internet")
+    fecha_agregada = models.DateTimeField(auto_now_add=True)
+
+    def obtener_imagen_url(self):
+        if self.imagen:
+            return self.imagen.url
+        
+        if self.imagen_url:
+            import re
+            # Si es un link de Google Drive (tipo /file/d/ID/view)
+            m = re.search(r'/file/d/([a-zA-Z0-9_-]+)', self.imagen_url)
+            if m:
+                return f"https://drive.google.com/uc?export=view&id={m.group(1)}"
+            
+            # Si es un link de Google Drive (tipo /open?id=ID)
+            m2 = re.search(r'id=([a-zA-Z0-9_-]+)', self.imagen_url)
+            if m2 and 'drive.google.com' in self.imagen_url:
+                return f"https://drive.google.com/uc?export=view&id={m2.group(1)}"
+            
+            return self.imagen_url
+        return ""
+
+    def __str__(self):
+        return f"Foto de {self.tour.nombre if self.tour else 'Galería'} - {self.fecha_agregada.strftime('%Y-%m-%d')}"

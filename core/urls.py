@@ -1,6 +1,7 @@
 from django.urls import path, include
 from . import views
-
+from django.conf import settings
+from django.conf.urls.static import static
 # URLs de TortugaTour
 urlpatterns = [
     path("", views.home, name="home"),
@@ -27,6 +28,8 @@ urlpatterns = [
     path('panel/destinos/eliminar/<int:pk>/', views.eliminar_destino, name='eliminar_destino'),
     path("panel/tours/", views.admin_tours, name="admin_tours"),
     path("panel/tours/editar/<int:pk>/", views.editar_tour, name="editar_tour"),
+    path("panel/galeria/", views.panel_galeria, name="panel_galeria"),
+    path("panel/galeria/eliminar/<int:pk>/", views.eliminar_galeria, name="eliminar_galeria"),
 
     #logueo
     path('registro/', views.registro, name='registro'),
@@ -46,4 +49,9 @@ urlpatterns = [
     path('pagos/paypal/<int:reserva_id>/capture/', views.capture_paypal_order, name='capture_paypal_order'),
     path('webhooks/lemonsqueezy/', views.lemonsqueezy_webhook, name='lemonsqueezy_webhook'),
     path('webhooks/paypal/', views.paypal_webhook, name='paypal_webhook'),
+
+    #imagenes
+    path('galeria/', views.galeria_view, name='galeria'),
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

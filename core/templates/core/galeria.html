@@ -1,0 +1,135 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-12">
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight">Galería de <span class="text-primary">Tours</span>
+        </h1>
+        <p class="text-slate-500 mt-4 text-lg">Revive las mejores experiencias de nuestros viajeros en Galápagos.</p>
+    </div>
+
+    {% if fotos %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% for foto in fotos %}
+        <div class="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-sm hover:shadow-xl transition-all duration-500 border border-slate-100 bg-white"
+            onclick="openLightbox({{ forloop.counter0 }})">
+
+            <img src="{{ foto.obtener_imagen_url }}"
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                alt="Foto de Tour">
+
+            <div
+                class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6">
+                <div
+                    class="text-white text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                    <span class="material-icons text-3xl mb-2 block">zoom_in</span>
+                    <p class="font-bold text-xs tracking-widest uppercase text-slate-200">
+                        {{ foto.tour.nombre|default:"TortugaTour" }}
+                    </p>
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
+        <span class="material-icons text-6xl text-slate-200 mb-4">photo_camera</span>
+        <h3 class="text-xl font-bold text-slate-800">Aún no hay fotos en la galería</h3>
+        <p class="text-slate-500 mt-2">¡Próximamente publicaremos nuestras aventuras!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightbox"
+    class="fixed inset-0 z-[100] hidden bg-slate-900/95 flex flex-col items-center justify-center backdrop-blur-md opacity-0 transition-opacity duration-300">
+    <button onclick="closeLightbox()"
+        class="absolute top-6 right-6 lg:top-10 lg:right-10 text-white/50 hover:text-white transition-colors p-2 bg-black/20 rounded-full hover:bg-white/10">
+        <span class="material-icons text-3xl block">close</span>
+    </button>
+
+    <button onclick="prevImage()"
+        class="absolute left-4 lg:left-10 text-white/50 hover:text-white transition-colors p-3 bg-black/20 hover:bg-white/10 rounded-full focus:outline-none">
+        <span class="material-icons text-3xl block">chevron_left</span>
+    </button>
+
+    <img id="lightbox-img" src="" class="max-h-[85vh] max-w-[90vw] object-contain rounded-xl shadow-2xl"
+        alt="Foto Ampliada">
+
+    <p id="lightbox-caption"
+        class="absolute bottom-8 left-0 right-0 text-center text-white/80 font-bold tracking-[0.3em] uppercase text-xs">
+    </p>
+
+    <button onclick="nextImage()"
+        class="absolute right-4 lg:right-10 text-white/50 hover:text-white transition-colors p-3 bg-black/20 hover:bg-white/10 rounded-full focus:outline-none">
+        <span class="material-icons text-3xl block">chevron_right</span>
+    </button>
+</div>
+
+<script>
+    // Colección de URLs de imágenes generada por el template
+    const images = [
+        {% for foto in fotos %}
+    {
+        url: "{{ foto.obtener_imagen_url|escapejs }}",
+            tourName: "{{ foto.tour.nombre|default:'Galería de TortugaTour'|escapejs }}"
+    } {% if not forloop.last %}, {% endif %}
+    {% endfor %}
+    ];
+
+    let currentIndex = 0;
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxCaption = document.getElementById('lightbox-caption');
+
+    function openLightbox(index) {
+        if (images.length === 0) return;
+        currentIndex = index;
+        updateLightboxContent();
+        lightbox.classList.remove('hidden');
+        // Pequeño delay para que la transición de opacidad se note suavemente
+        setTimeout(() => lightbox.classList.remove('opacity-0'), 10);
+        document.body.style.overflow = 'hidden'; // Ocultar scroll
+    }
+
+    function closeLightbox() {
+        lightbox.classList.add('opacity-0');
+        setTimeout(() => {
+            lightbox.classList.add('hidden');
+            document.body.style.overflow = ''; // Restaurar scroll
+        }, 300);
+    }
+
+    function updateLightboxContent() {
+        lightboxImg.src = images[currentIndex].url;
+        lightboxCaption.textContent = images[currentIndex].tourName;
+    }
+
+    function prevImage() {
+        currentIndex = (currentIndex === 0) ? images.length - 1 : currentIndex - 1;
+        updateLightboxContent();
+    }
+
+    function nextImage() {
+        currentIndex = (currentIndex === images.length - 1) ? 0 : currentIndex + 1;
+        updateLightboxContent();
+    }
+
+    // Controles de teclado
+    document.addEventListener('keydown', (e) => {
+        if (!lightbox.classList.contains('hidden')) {
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') prevImage();
+            if (e.key === 'ArrowRight') nextImage();
+        }
+    });
+
+    // Cerrar si se da click fuera de la imagen (en el fondo oscurecido)
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+            closeLightbox();
+        }
+    });
+</script>
+{% endblock %}

@@ -37,21 +37,95 @@ class TourForm(forms.ModelForm):
             'cupo_maximo': forms.NumberInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary'}),
         }
 
-#logueo
 from django import forms
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.core.exceptions import ValidationError
 import re
 
+class TuristaLoginForm(AuthenticationForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].label = "Nombre de Usuario o Correo"
+        self.fields['username'].widget.attrs.update({
+            'placeholder': 'Ej. juanperez123'
+        })
+        self.fields['password'].label = "Tu Contraseña"
+        self.fields['password'].widget.attrs.update({
+            'placeholder': '••••••••'
+        })
+        
+        self.error_messages.update({
+            'invalid_login': "Usuario o contraseña incorrectos. Por favor, intenta de nuevo.",
+            'inactive': "Esta cuenta se encuentra inactiva.",
+        })
+
+    def clean(self):
+        username = self.cleaned_data.get('username')
+        password = self.cleaned_data.get('password')
+
+        if username is not None and password:
+            from django.contrib.auth import authenticate
+            
+            # Verificar si se ingresó un correo en lugar de un nombre de usuario
+            if '@' in username:
+                try:
+                    user_obj = User.objects.get(email__iexact=username)
+                    username = user_obj.username
+                except User.DoesNotExist:
+                    pass
+            
+            self.user_cache = authenticate(self.request, username=username, password=password)
+            if self.user_cache is None:
+                raise self.get_invalid_login_error()
+            else:
+                self.confirm_login_allowed(self.user_cache)
+
+        return self.cleaned_data
+
 class RegistroTuristaForm(UserCreationForm):
-    # Asegúrate de incluir estos campos si no los tenías
-    first_name = forms.CharField(label="Nombre", required=True)
-    email = forms.EmailField(label="Correo Electrónico", required=True)
+    first_name = forms.CharField(
+        label="Nombre y Apellido", 
+        required=True,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej. Juan Pérez'})
+    )
+    email = forms.EmailField(
+        label="Correo Electrónico", 
+        required=True,
+        widget=forms.EmailInput(attrs={'placeholder': 'ejemplo@correo.com'})
+    )
 
     class Meta:
         model = User
         fields = ['username', 'first_name', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Mejorando los textos y nombres de los campos para el turista
+        self.fields['username'].label = "Nombre de Usuario (Para iniciar sesión)"
+        self.fields['username'].help_text = "Sin espacios, solo letras y/o números (ej: juanperez123)."
+        self.fields['username'].widget.attrs.update({'placeholder': 'ej: juanperez123'})
+        
+        # Las contraseñas vienen de UserCreationForm, así que las modificamos aquí
+        if 'password1' in self.fields:
+            self.fields['password1'].label = "Crea tu Contraseña"
+            self.fields['password1'].help_text = "Mínimo 8 caracteres y 1 signo especial (@, $, etc)."
+        if 'password2' in self.fields:
+            self.fields['password2'].label = "Confirma tu Contraseña"
+            self.fields['password2'].help_text = "Vuelve a escribir la misma contraseña."
+
+    def clean_username(self):
+        username = self.cleaned_data.get("username")
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError("¡Ups! Ese nombre de usuario ya está registrado. Por favor, elige uno diferente.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if User.objects.filter(email__iexact=email).exists():
+            raise ValidationError("¡Atención! Este correo electrónico ya está registrado con otra cuenta.")
+        return email
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -90,3 +164,15 @@ class ContactoForm(forms.Form):
     email = forms.EmailField()
     asunto = forms.ChoiceField(choices=OPCIONES_ASUNTO)
     mensaje = forms.CharField(widget=forms.Textarea)
+
+from .models import Galeria
+
+class GaleriaForm(forms.ModelForm):
+    class Meta:
+        model = Galeria
+        fields = ['tour', 'imagen', 'imagen_url']
+        widgets = {
+            'tour': forms.Select(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary'}),
+            'imagen': forms.ClearableFileInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary'}),
+            'imagen_url': forms.URLInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'placeholder': 'https://link...'}),
+        }

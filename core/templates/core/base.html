@@ -1,18 +1,30 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="">
+
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <!-- Script inicial para evitar parpadeos de Dark Mode -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}TortugaTour - Tours en Galápagos{% endblock %}</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -31,36 +43,74 @@
     </script>
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-background-light text-slate-800 font-display flex flex-col min-h-screen">
 
-<nav class="fixed w-full z-50 bg-white/90 backdrop-blur border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-        <a href="{% url 'home' %}" class="flex items-center gap-2">
-            <span class="material-icons text-primary text-3xl">travel_explore</span>
-            <span class="font-bold text-2xl tracking-tighter">Tortuga<span class="text-primary">Tour</span></span>
-        </a>
+<body
+    class="bg-background-light dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-display flex flex-col min-h-screen transition-colors duration-300">
 
-        <div class="hidden md:flex gap-8 font-bold text-sm uppercase tracking-wider">
-            <a href="{% url 'home' %}" class="hover:text-primary transition">Inicio</a>
-            <a href="{% url 'tours' %}" class="hover:text-primary transition">Tours</a>
-            <a href="{% url 'nosotros' %}" class="hover:text-primary transition">Nosotros</a>
-            <a href="{% url 'contacto' %}" class="hover:text-primary transition">Contáctanos</a>
-        </div>
+    <nav
+        class="fixed w-full z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <a href="{% url 'home' %}" class="flex items-center gap-2">
+                <span class="material-icons text-primary text-3xl">travel_explore</span>
+                <span class="font-bold text-2xl tracking-tighter">Tortuga<span class="text-primary">Tour</span></span>
+            </a>
 
-        <div class="flex items-center gap-4">
-            {% if user.is_authenticated %}
+            <div class="hidden md:flex gap-8 font-bold text-sm uppercase tracking-wider">
+                <a href="{% url 'home' %}" class="hover:text-primary transition">Inicio</a>
+                <a href="{% url 'tours' %}" class="hover:text-primary transition">Tours</a>
+                <a href="{% url 'galeria' %}" class="hover:text-primary transition">Galería</a>
+                <a href="{% url 'nosotros' %}" class="hover:text-primary transition">Nosotros</a>
+                <a href="{% url 'contacto' %}" class="hover:text-primary transition">Contáctanos</a>
+            </div>
+
+            <div class="flex items-center gap-3">
+
+                <!-- Botón de Modo Oscuro -->
+                <button onclick="toggleDarkMode()"
+                    class="flex items-center text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors focus:outline-none cursor-pointer">
+                    <span id="dark-mode-icon" class="material-icons text-[24px]">light_mode</span>
+                </button>
+
+                <!-- Selector de Idioma Custom -->
+                <div class="relative group flex items-center h-full">
+                    <button
+                        class="flex items-center text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors focus:outline-none cursor-pointer">
+                        <span class="material-icons text-[24px]">language</span>
+                    </button>
+                    <!-- Dropdown de idiomas -->
+                    <div
+                        class="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[100] overflow-hidden">
+                        <button type="button" onclick="traducirPagina('es')"
+                            class="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-primary dark:hover:text-primary border-b border-slate-50 dark:border-slate-700 transition-colors">🇪🇸
+                            Español</button>
+                        <button type="button" onclick="traducirPagina('en')"
+                            class="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-primary dark:hover:text-primary border-b border-slate-50 dark:border-slate-700 transition-colors">🇺🇸
+                            English</button>
+                        <button type="button" onclick="traducirPagina('fr')"
+                            class="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-primary dark:hover:text-primary border-b border-slate-50 dark:border-slate-700 transition-colors">🇫🇷
+                            Français</button>
+                        <button type="button" onclick="traducirPagina('de')"
+                            class="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-primary dark:hover:text-primary transition-colors">🇩🇪
+                            Deutsch</button>
+                    </div>
+                </div>
+                <!-- Traductor oculto de Google -->
+                <div id="google_translate_element" style="display:none;"></div>
+
+                {% if user.is_authenticated %}
                 <div class="flex items-center gap-3 border-l pl-4 border-slate-200">
                     <div class="text-right hidden sm:block">
-                        <p class="text-[9px] font-black uppercase {% if user.is_staff %}text-secondary{% else %}text-slate-400{% endif %} leading-none">
+                        <p
+                            class="text-[9px] font-black uppercase {% if user.is_staff %}text-secondary{% else %}text-slate-400 dark:text-slate-500{% endif %} leading-none">
                             {% if user.is_staff %}Administrador{% else %}Viajero{% endif %}
                         </p>
-                        <p class="text-sm font-bold text-slate-800">{{ user.username }}</p>
+                        <p class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ user.username }}</p>
                     </div>
 
                     {% if user.is_staff %}
-                    <a href="{% url 'panel_admin' %}" 
-                       class="flex items-center gap-1 bg-secondary/10 text-secondary px-3 py-2 rounded-xl hover:bg-secondary hover:text-white transition-all group" 
-                       title="Panel de Control">
+                    <a href="{% url 'panel_admin' %}"
+                        class="flex items-center gap-1 bg-secondary/10 text-secondary px-3 py-2 rounded-xl hover:bg-secondary hover:text-white transition-all group"
+                        title="Panel de Control">
                         <span class="material-icons text-xl">admin_panel_settings</span>
                         <span class="text-[10px] font-black uppercase hidden lg:block">Gestión</span>
                     </a>
@@ -68,28 +118,31 @@
 
                     <form action="{% url 'logout' %}" method="post" class="inline">
                         {% csrf_token %}
-                        <button type="submit" class="p-2 text-slate-400 hover:text-red-500 transition" title="Cerrar Sesión">
+                        <button type="submit" class="p-2 text-slate-400 hover:text-red-500 transition"
+                            title="Cerrar Sesión">
                             <span class="material-icons">logout</span>
                         </button>
                     </form>
                 </div>
-            {% else %}
+                {% else %}
                 <div class="flex items-center gap-2">
-                    <a href="{% url 'login' %}" class="text-sm font-bold text-slate-600 hover:text-primary px-3">Entrar</a>
-                    <a href="{% url 'registro' %}" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary transition shadow-lg shadow-slate-200">
+                    <a href="{% url 'login' %}"
+                        class="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary px-3 transition-colors">Entrar</a>
+                    <a href="{% url 'registro' %}"
+                        class="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary dark:hover:bg-primary dark:hover:text-white transition-colors shadow-lg shadow-slate-200 dark:shadow-none">
                         Registro
                     </a>
                 </div>
-            {% endif %}
+                {% endif %}
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
-<main class="pt-20 flex-grow">
-    {% if messages %}
-    <div class="max-w-7xl mx-auto px-6 mt-6">
-        {% for message in messages %}
-        <div class="flex items-center p-4 mb-4 rounded-2xl border transition-all animate-pulse
+    <main class="pt-20 flex-grow">
+        {% if messages %}
+        <div class="max-w-7xl mx-auto px-6 mt-6" id="global-messages-container">
+            {% for message in messages %}
+            <div class="auto-dismiss-msg flex items-center p-4 mb-4 rounded-2xl border transition-all duration-500 animate-[pulse_1s_ease-in-out_3]
             {% if message.tags == 'success' %}
                 bg-green-50 border-green-200 text-green-800
             {% elif message.tags == 'error' %}
@@ -97,87 +150,197 @@
             {% else %}
                 bg-blue-50 border-blue-200 text-blue-800
             {% endif %} shadow-sm">
-            
-            <div class="flex-shrink-0">
-                {% if message.tags == 'success' %}
+
+                <div class="flex-shrink-0">
+                    {% if message.tags == 'success' %}
                     <span class="material-icons text-green-500">check_circle</span>
-                {% elif message.tags == 'error' %}
+                    {% elif message.tags == 'error' %}
                     <span class="material-icons text-red-500">error</span>
-                {% else %}
+                    {% else %}
                     <span class="material-icons text-blue-500">info</span>
-                {% endif %}
+                    {% endif %}
+                </div>
+
+                <div class="ml-3 text-sm font-bold tracking-tight">
+                    {{ message }}
+                </div>
+
+                <button type="button" onclick="cerrarMensaje(this.parentElement)"
+                    class="ml-auto bg-transparent text-current opacity-50 hover:opacity-100 transition-opacity">
+                    <span class="material-icons text-lg">close</span>
+                </button>
             </div>
-            
-            <div class="ml-3 text-sm font-bold tracking-tight">
-                {{ message }}
+            {% endfor %}
+        </div>
+
+        <script>
+            // Función para desaparecer notificaciones después de 5 segundos (5000ms)
+            document.addEventListener("DOMContentLoaded", () => {
+                const mensajes = document.querySelectorAll('.auto-dismiss-msg');
+                mensajes.forEach((msj) => {
+                    setTimeout(() => cerrarMensaje(msj), 5000);
+                });
+            });
+
+            function cerrarMensaje(elemento) {
+                // Agregar efecto de desvanecimiento suave antes de borrar
+                elemento.style.opacity = '0';
+                elemento.style.transform = 'translateY(-10px)';
+                setTimeout(() => elemento.remove(), 500); // 500ms para desaparecer del DOM tras la animación
+            }
+        </script>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <a href="https://wa.me/5930939833971" target="_blank" id="whatsapp-btn-dynamic"
+        class="fixed bottom-8 right-8 z-[60] flex items-center justify-center w-16 h-16 bg-[#25D366] text-white rounded-full shadow-2xl hover:scale-110 transition-all group">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+        <span
+            class="absolute right-full mr-4 bg-white text-slate-900 px-4 py-2 rounded-xl text-xs font-black shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            ¿NECESITAS AYUDA?
+        </span>
+    </a>
+
+    <script>
+        // Hacer que el mensaje de WhatsApp incluya el enlace de la página en donde se encuentra el cliente
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('whatsapp-btn-dynamic');
+            if (btn) {
+                const urlActual = window.location.href;
+                const mensajePersonalizado = `¡Hola TortugaTour! Me gustaría recibir asesoría súper rápida para planificar mi aventura en Galápagos.\n\nEstaba explorando esta sección de su web: ${urlActual}`;
+                btn.href = `https://wa.me/5930939833971?text=${encodeURIComponent(mensajePersonalizado)}`;
+            }
+        });
+    </script>
+
+    <footer class="bg-slate-900 text-slate-300 mt-12">
+        <div class="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div class="space-y-4">
+                <div class="flex items-center gap-2 text-white">
+                    <span class="material-icons text-primary text-3xl">travel_explore</span>
+                    <span class="font-bold text-2xl tracking-tighter">TortugaTour</span>
+                </div>
+                <p class="text-sm text-slate-400 leading-relaxed">
+                    Tours sostenibles en las Islas Galápagos. Comprometidos con la conservación y la mejor experiencia
+                    de viaje.
+                </p>
+                <div class="flex gap-4">
+                    <a href="#"
+                        class="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center hover:bg-primary transition"><i
+                            class="fa-brands fa-instagram"></i></a>
+                    <a href="#"
+                        class="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center hover:bg-primary transition"><i
+                            class="fa-brands fa-facebook-f"></i></a>
+                </div>
             </div>
 
-            <button type="button" onclick="this.parentElement.remove()" class="ml-auto bg-transparent text-current opacity-50 hover:opacity-100 transition-opacity">
-                <span class="material-icons text-lg">close</span>
-            </button>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    {% block content %}{% endblock %}
-</main>
-
-<a href="https://wa.me/5930939833971?text=Hola!%20Tengo%20dudas%20sobre%20TortugaTour" 
-   target="_blank"
-   class="fixed bottom-8 right-8 z-[60] flex items-center justify-center w-16 h-16 bg-[#25D366] text-white rounded-full shadow-2xl hover:scale-110 transition-all group">
-    <i class="fa-brands fa-whatsapp text-3xl"></i>
-    <span class="absolute right-full mr-4 bg-white text-slate-900 px-4 py-2 rounded-xl text-xs font-black shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-        ¿NECESITAS AYUDA?
-    </span>
-</a>
-
-<footer class="bg-slate-900 text-slate-300 mt-12">
-    <div class="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-4 gap-12">
-        <div class="space-y-4">
-            <div class="flex items-center gap-2 text-white">
-                <span class="material-icons text-primary text-3xl">travel_explore</span>
-                <span class="font-bold text-2xl tracking-tighter">TortugaTour</span>
+            <div>
+                <h4 class="text-white font-bold uppercase text-[11px] tracking-[0.2em] mb-6">Explorar</h4>
+                <ul class="space-y-3 text-sm font-medium">
+                    <li><a href="{% url 'tours' %}" class="hover:text-primary transition">Ver todos los Tours</a></li>
+                    <li><a href="{% url 'galeria' %}" class="hover:text-primary transition">Nuestra Galería</a></li>
+                </ul>
             </div>
-            <p class="text-sm text-slate-400 leading-relaxed">
-                Tours sostenibles en las Islas Galápagos. Comprometidos con la conservación y la mejor experiencia de viaje.
-            </p>
-            <div class="flex gap-4">
-                <a href="#" class="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center hover:bg-primary transition"><i class="fa-brands fa-instagram"></i></a>
-                <a href="#" class="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center hover:bg-primary transition"><i class="fa-brands fa-facebook-f"></i></a>
+
+            <div>
+                <h4 class="text-white font-bold uppercase text-[11px] tracking-[0.2em] mb-6">Soporte</h4>
+                <ul class="space-y-3 text-sm font-medium">
+                    <li><a href="{% url 'contacto' %}" class="hover:text-primary transition">Centro de Ayuda</a></li>
+                    <li><a href="{% url 'terminos' %}" class="hover:text-primary transition">Términos y Condiciones</a>
+                    </li>
+                    <li><a href="{% url 'faq' %}" class="hover:text-primary transition">FAQ</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-white font-bold uppercase text-[11px] tracking-[0.2em] mb-6">Contacto</h4>
+                <p class="text-sm text-slate-400 leading-relaxed">
+                    Puerto Ayora, Isla Santa Cruz<br>
+                    Galápagos, Ecuador<br>
+                    info@tortugatour.com
+                </p>
             </div>
         </div>
-        
-        <div>
-            <h4 class="text-white font-bold uppercase text-[11px] tracking-[0.2em] mb-6">Explorar</h4>
-            <ul class="space-y-3 text-sm font-medium">
-                <li><a href="{% url 'tours' %}" class="hover:text-primary transition">Ver todos los Tours</a></li>
-            </ul>
-        </div>
 
-        <div>
-            <h4 class="text-white font-bold uppercase text-[11px] tracking-[0.2em] mb-6">Soporte</h4>
-            <ul class="space-y-3 text-sm font-medium">
-                <li><a href="{% url 'contacto' %}" class="hover:text-primary transition">Centro de Ayuda</a></li>
-                <li><a href="{% url 'terminos' %}" class="hover:text-primary transition">Términos y Condiciones</a></li>
-                <li><a href="{% url 'faq' %}" class="hover:text-primary transition">FAQ</a></li>
-            </ul>
+        <div class="border-t border-white/5 py-8 text-center text-xs text-slate-500 uppercase tracking-widest">
+            &copy; 2026 TortugaTour. Todos los derechos reservados.
         </div>
+    </footer>
 
-        <div>
-            <h4 class="text-white font-bold uppercase text-[11px] tracking-[0.2em] mb-6">Contacto</h4>
-            <p class="text-sm text-slate-400 leading-relaxed">
-                Puerto Ayora, Isla Santa Cruz<br>
-                Galápagos, Ecuador<br>
-                info@tortugatour.com
-            </p>
-        </div>
-    </div>
-    
-    <div class="border-t border-white/5 py-8 text-center text-xs text-slate-500 uppercase tracking-widest">
-        &copy; 2026 TortugaTour. Todos los derechos reservados.
-    </div>
-</footer>
+    <div id="google_translate_element_mobile" style="display:none;"></div>
 
 </body>
+<script type="text/javascript">
+    function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+            pageLanguage: 'es',
+            includedLanguages: 'en,fr,de,es',
+            autoDisplay: false
+        }, 'google_translate_element');
+    }
+
+    // Funcionalidad del Traductor Puente
+    function traducirPagina(idioma) {
+        var teCombo = document.querySelector('.goog-te-combo');
+        if (teCombo) {
+            teCombo.value = idioma;
+            teCombo.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // Funcionalidad de Modo Oscuro / Claro
+    function toggleDarkMode() {
+        const html = document.documentElement;
+        if (html.classList.contains('dark')) {
+            html.classList.remove('dark');
+            localStorage.theme = 'light';
+            document.getElementById('dark-mode-icon').innerText = 'dark_mode';
+        } else {
+            html.classList.add('dark');
+            localStorage.theme = 'dark';
+            document.getElementById('dark-mode-icon').innerText = 'light_mode';
+        }
+    }
+
+    // Al cargar la página, aseguramos que el icono sea el correcto
+    document.addEventListener("DOMContentLoaded", () => {
+        if (document.documentElement.classList.contains('dark')) {
+            document.getElementById('dark-mode-icon').innerText = 'light_mode';
+        } else {
+            document.getElementById('dark-mode-icon').innerText = 'dark_mode';
+        }
+    });
+</script>
+<script type="text/javascript"
+    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<style>
+    /* Ocultar ABSOLUTAMENTE todo el UI basura de Google Translate */
+    .goog-te-gadget,
+    .goog-te-banner-frame,
+    .skiptranslate,
+    .goog-te-spinner-pos,
+    .goog-te-spinner-animation {
+        display: none !important;
+    }
+
+    /* Evitar que google baje la pantalla */
+    body {
+        top: 0px !important;
+        position: static !important;
+    }
+
+    /* Prevenir popups tooltips al posar el mouse */
+    .goog-tooltip,
+    .goog-tooltip:hover {
+        display: none !important;
+    }
+
+    .goog-text-highlight {
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+</style>
+
 </html>

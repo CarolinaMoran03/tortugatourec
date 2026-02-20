@@ -191,3 +191,8 @@ def _parse_currency_rates(raw):
 
 CURRENCY_RATES = _parse_currency_rates(os.getenv("CURRENCY_RATES", "USD:1,EUR:0.93,MXN:17"))
 
+#imagenes
+import os
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

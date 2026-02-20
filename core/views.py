@@ -22,7 +22,7 @@ from django.views.decorators.http import require_POST
 from django.db import transaction
 from .models import Destino, Tour, SalidaTour, Reserva, Pago, Resena
 from .utils import generar_ticket_pdf
-from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm
+from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm, TuristaLoginForm
 
 logger = logging.getLogger(__name__)
 
@@ -73,15 +73,26 @@ def lista_tours(request):
     if not (destino_id and fecha and personas):
         return render(request, "core/lista_tours.html", {"tours_con_salidas": {}})
 
-    salidas = SalidaTour.objects.filter(
+    salidas_brutas = SalidaTour.objects.filter(
         tour__destino_id=destino_id,
         fecha=fecha,
         cupos_disponibles__gte=int(personas)
     ).select_related('tour').order_by('hora')
 
-    # Agrupamos por Tour
+    ahora = timezone.now()
+    fecha_hoy = ahora.date()
+    hora_actual = ahora.time()
+
+    # Agrupamos por Tour y filtramos fechas/horas pasadas
     tours_con_salidas = {}
-    for s in salidas:
+    for s in salidas_brutas:
+        # Invalidar si la fecha de búsqueda ya pasó
+        if s.fecha < fecha_hoy:
+            continue
+        # Invalidar si es hoy y la hora ya pasó
+        if s.fecha == fecha_hoy and s.hora and s.hora < hora_actual:
+            continue
+            
         if s.tour not in tours_con_salidas:
             tours_con_salidas[s.tour] = []
         tours_con_salidas[s.tour].append(s)
@@ -106,12 +117,22 @@ def lista_tours(request):
 
 def tour_detalle(request, pk):
     tour = get_object_or_404(Tour, pk=pk)
-    # Filtrar solo salidas futuras con cupos disponibles
-    salidas = SalidaTour.objects.filter(
+    # Filtrar solo salidas futuras con cupos disponibles (y que no haya pasado la hora si es hoy)
+    ahora = timezone.now()
+    fecha_hoy = ahora.date()
+    hora_actual = ahora.time()
+    
+    salidas_brutas = SalidaTour.objects.filter(
         tour=tour, 
         cupos_disponibles__gt=0,
-        fecha__gte=timezone.now().date()
+        fecha__gte=fecha_hoy
     ).order_by('fecha', 'hora')
+    
+    salidas = []
+    for s in salidas_brutas:
+        if s.fecha == fecha_hoy and s.hora and s.hora < hora_actual:
+            continue
+        salidas.append(s)
 
     if request.method == "POST":
         # Verificar si es una petición AJAX
@@ -134,6 +155,15 @@ def tour_detalle(request, pk):
                 return redirect('tour_detalle', pk=pk)
 
             salida = get_object_or_404(SalidaTour, id=salida_id, tour=tour)
+            
+            # Validar que la fecha y hora seleccionada no haya pasado al momento de enviar POST
+            if salida.fecha < fecha_hoy or (salida.fecha == fecha_hoy and salida.hora and salida.hora < hora_actual):
+                error_msg = "Lo sentimos, el horario para este tour ya ha pasado. Por favor selecciona otra fecha u horario."
+                if is_ajax:
+                    return JsonResponse({'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect('tour_detalle', pk=pk)
+
             total_personas = adultos + ninos
 
             if total_personas <= 0:
@@ -199,6 +229,7 @@ def tour_detalle(request, pk):
             return redirect('tour_detalle', pk=pk)
 
     resenas = tour.resenas.select_related("usuario").order_by("-fecha")
+    fotos = tour.fotos.all().order_by('-fecha_agregada')
 
     currency_code, currency_rate = _currency_context(request)
     price_display = _tour_price_display(tour, currency_rate)
@@ -209,6 +240,7 @@ def tour_detalle(request, pk):
         "tour": tour,
         "salidas": salidas,
         "resenas": resenas,
+        "fotos": fotos,
         "currency_code": currency_code,
         "currency_rate": str(currency_rate),
         "precio_adulto": precio_adulto,
@@ -550,14 +582,14 @@ def vista_login(request):
     next_url = request.GET.get('next', 'home')
     
     if request.method == 'POST':
-        form = AuthenticationForm(data=request.POST)
+        form = TuristaLoginForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
             messages.success(request, f"¡Qué bueno verte de nuevo, {user.first_name}!")
             return redirect(request.POST.get('next', 'home'))
     else:
-        form = AuthenticationForm()
+        form = TuristaLoginForm()
     
     return render(request, 'registration/login.html', {
         'form': form,
@@ -1131,3 +1163,40 @@ def paypal_webhook(request):
                 return HttpResponse(status=500)
     return HttpResponse(status=200)
 
+def galeria_view(request):
+    from .models import Galeria
+    fotos = Galeria.objects.all().order_by('-fecha_agregada')
+    return render(request, 'core/galeria.html', {'fotos': fotos})
+
+@login_required
+@user_passes_test(es_admin)
+def panel_galeria(request):
+    from .models import Galeria
+    from .forms import GaleriaForm
+    fotos_list = Galeria.objects.all().order_by('-id')
+    
+    if request.method == 'POST':
+        form = GaleriaForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "¡Imagen agregada a la galería con éxito!")
+            return redirect('panel_galeria')
+        else:
+            messages.error(request, "Error al subir la imagen. Verifica los datos.")
+    else:
+        form = GaleriaForm()
+            
+    return render(request, 'core/panel/galeria.html', {
+        'fotos': fotos_list,
+        'form': form
+    })
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_galeria(request, pk):
+    from .models import Galeria
+    foto = get_object_or_404(Galeria, pk=pk)
+    if request.method == 'POST':
+        foto.delete()
+        messages.success(request, "Imagen eliminada correctamente.")
+    return redirect('panel_galeria')
