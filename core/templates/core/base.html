@@ -330,23 +330,30 @@
         }, 'google_translate_element');
     }
 
-    // Funcionalidad del Traductor Puente mejorada para iOS
+    // Funcionalidad Definitiva del Traductor para Safari / iPhone / Apple
     function traducirPagina(idioma) {
-        var teCombo = document.querySelector('.goog-te-combo');
-        if (teCombo) {
-            teCombo.value = idioma;
-            // Solución específica para que Safari de iPhone aplique el cambio
-            var event;
-            if (typeof Event === 'function') {
-                event = new Event('change');
-            } else {
-                event = document.createEvent('HTMLEvents');
-                event.initEvent('change', true, true);
-            }
-            teCombo.dispatchEvent(event);
+        // En Apple/iOS, forzar eventos JavaScript en menús de terceros suele bloquearse.
+        // La técnica "Nuclear" infalible es inyectar la cookie oficial y recargar rápidamente.
+
+        var domain = window.location.hostname;
+
+        // 1. Limpiar las cookies viejas de idioma
+        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + domain;
+        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + domain;
+
+        // 2. Establecer el nuevo idioma (si no es el idioma original)
+        if (idioma !== 'es') {
+            document.cookie = "googtrans=/es/" + idioma + "; path=/;";
+            document.cookie = "googtrans=/es/" + idioma + "; path=/; domain=" + domain;
+            document.cookie = "googtrans=/es/" + idioma + "; path=/; domain=." + domain;
         }
-        // Cerrar el menú después de seleccionar
+
+        // 3. Ocultar el menú de forma visual inmediatamente
         toggleLangMenu();
+
+        // 4. Refrescar la página para obligar a leer la nueva orden
+        window.location.reload();
     }
 
     // Mostrar menú de idiomas con click seguro en móviles
@@ -375,13 +382,21 @@
         }
     }
 
-    // Al cargar la página, aseguramos que el icono sea el correcto
+    // Al cargar la página
     document.addEventListener("DOMContentLoaded", () => {
+        // Aseguramos que el icono de modo oscuro sea el correcto
         if (document.documentElement.classList.contains('dark')) {
             document.getElementById('dark-mode-icon').innerText = 'light_mode';
         } else {
             document.getElementById('dark-mode-icon').innerText = 'dark_mode';
         }
+
+        // PREVENCIÓN CRÍTICA DE TRADUCCIÓN DE ICONOS: 
+        // Evita que Google Translate traduzca los textos internos de Material Icons (rompiendo el diseño por completo)
+        document.querySelectorAll('.material-icons, .fa-brands, i').forEach(icon => {
+            icon.classList.add('notranslate');
+            icon.setAttribute('translate', 'no');
+        });
     });
 
     // Toggle para el menú en teléfonos móviles
@@ -420,7 +435,7 @@
     body {
         top: 0px !important;
         margin-top: 0 !important;
-        position: relative !important;
+        position: static !important;
     }
 
     /* PREVENIR QUE AL TRADUCIR SE ROMPAN LOS CONTAINERS FLEX/GRID */
