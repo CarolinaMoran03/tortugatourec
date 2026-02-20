@@ -457,8 +457,13 @@
     // ENVÍO AJAX - REDIRIGE A CHECKOUT
     const formReserva = document.getElementById('reservaForm');
     if (formReserva) {
+        let isSubmitting = false;
         formReserva.addEventListener('submit', function (e) {
             e.preventDefault();
+
+            if (isSubmitting) return;
+            isSubmitting = true;
+
             const btn = document.getElementById('btnConfirmar');
             const originalText = btn.innerText;
 
@@ -479,6 +484,7 @@
                         mostrarError(res.body.error || "Error al reservar.");
                         btn.disabled = false;
                         btn.innerText = originalText;
+                        isSubmitting = false;
                     }
                 })
                 .catch(err => {
@@ -486,6 +492,7 @@
                     mostrarError("Error de conexión.");
                     btn.disabled = false;
                     btn.innerText = originalText;
+                    isSubmitting = false;
                 });
         });
     }

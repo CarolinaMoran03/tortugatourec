@@ -43,6 +43,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-only-key")
 DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 
 ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.dev', 'https://*.ngrok.app', 'https://*.ngrok.io']
 
 
 # Application definition

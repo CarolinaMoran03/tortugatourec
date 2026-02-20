@@ -406,6 +406,7 @@ def admin_reservas(request):
     reservas = (
         Reserva.objects.select_related("salida__tour")
         .prefetch_related("pagos")
+        .exclude(estado="pendiente")
         .order_by("-id")
     )
     for reserva in reservas:
@@ -612,7 +613,7 @@ from django.contrib.auth.decorators import login_required
 @login_required
 def mis_reservas(request):
     """Vista para que el turista vea su historial de compras/reservas."""
-    reservas = Reserva.objects.filter(usuario=request.user).order_by('-fecha_reserva')
+    reservas = Reserva.objects.filter(usuario=request.user).exclude(estado="pendiente").order_by('-fecha_reserva')
     return render(request, 'core/mis_reservas.html', {'reservas': reservas})
 
 # ============================================
@@ -890,9 +891,13 @@ def _lemonsqueezy_verify_signature(request):
     secret = getattr(settings, "LEMONSQUEEZY_WEBHOOK_SECRET", "")
     signature = request.headers.get("X-Signature", "")
     if not secret or not signature:
+        print(f"WEBHOOK DEBUG: Missing secret or signature. Secret: '{secret}', Signature: '{signature}'")
         return False
     digest = hmac.new(secret.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(digest, signature)
+    if not hmac.compare_digest(digest, signature):
+        print(f"WEBHOOK DEBUG: Signature mismatch. Expected: '{digest}', Got: '{signature}'")
+        return False
+    return True
 
 
 def checkout_pago(request, reserva_id):
