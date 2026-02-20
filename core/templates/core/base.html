@@ -74,14 +74,14 @@
                 </button>
 
                 <!-- Selector de Idioma Custom -->
-                <div class="relative group flex items-center h-full">
-                    <button
+                <div class="relative flex items-center h-full">
+                    <button type="button" onclick="toggleLangMenu()"
                         class="flex items-center text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors focus:outline-none cursor-pointer">
                         <span class="material-icons text-[24px]">language</span>
                     </button>
                     <!-- Dropdown de idiomas -->
-                    <div
-                        class="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[100] overflow-hidden">
+                    <div id="lang-dropdown"
+                        class="absolute top-8 right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 opacity-0 invisible transition-all duration-300 z-[100] overflow-hidden">
                         <button type="button" onclick="traducirPagina('es')"
                             class="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-primary dark:hover:text-primary border-b border-slate-50 dark:border-slate-700 transition-colors">🇪🇸
                             Español</button>
@@ -330,12 +330,34 @@
         }, 'google_translate_element');
     }
 
-    // Funcionalidad del Traductor Puente
+    // Funcionalidad del Traductor Puente mejorada para iOS
     function traducirPagina(idioma) {
         var teCombo = document.querySelector('.goog-te-combo');
         if (teCombo) {
             teCombo.value = idioma;
-            teCombo.dispatchEvent(new Event('change'));
+            // Solución específica para que Safari de iPhone aplique el cambio
+            var event;
+            if (typeof Event === 'function') {
+                event = new Event('change');
+            } else {
+                event = document.createEvent('HTMLEvents');
+                event.initEvent('change', true, true);
+            }
+            teCombo.dispatchEvent(event);
+        }
+        // Cerrar el menú después de seleccionar
+        toggleLangMenu();
+    }
+
+    // Mostrar menú de idiomas con click seguro en móviles
+    function toggleLangMenu() {
+        const menu = document.getElementById('lang-dropdown');
+        if (menu.classList.contains('invisible')) {
+            menu.classList.remove('invisible', 'opacity-0');
+            menu.classList.add('visible', 'opacity-100');
+        } else {
+            menu.classList.add('invisible', 'opacity-0');
+            menu.classList.remove('visible', 'opacity-100');
         }
     }
 
@@ -389,10 +411,22 @@
         display: none !important;
     }
 
-    /* Evitar que google baje la pantalla */
+    /* Evitar que google baje la pantalla o empuje el nav */
+    html {
+        top: 0 !important;
+        margin-top: 0 !important;
+    }
+
     body {
         top: 0px !important;
-        position: static !important;
+        margin-top: 0 !important;
+        position: relative !important;
+    }
+
+    /* PREVENIR QUE AL TRADUCIR SE ROMPAN LOS CONTAINERS FLEX/GRID */
+    /* Google Translate envuelve el texto en etiquetas <font> que rompen los diseños modernos. display: contents anula su efecto estructural */
+    font {
+        display: contents !important;
     }
 
     /* Prevenir popups tooltips al posar el mouse */
