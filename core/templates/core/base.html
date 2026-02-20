@@ -120,6 +120,12 @@
                     {% endif %}
 
                     {% if user.is_staff %}
+                    <a href="{% url 'perfil_admin' %}"
+                        class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary dark:hover:text-primary px-3 py-2 rounded-xl transition-all group"
+                        title="Mi Perfil">
+                        <span class="material-icons text-xl">account_circle</span>
+                        <span class="text-[10px] font-black uppercase hidden lg:block">Perfil</span>
+                    </a>
                     <a href="{% url 'panel_admin' %}"
                         class="flex items-center gap-1 bg-secondary/10 text-secondary px-3 py-2 rounded-xl hover:bg-secondary hover:text-white transition-all group"
                         title="Panel de Control">
@@ -180,6 +186,9 @@
                 </a>
                 {% endif %}
                 {% if user.is_staff %}
+                <a href="{% url 'perfil_admin' %}" class="flex items-center gap-2 text-slate-500 font-bold py-2">
+                    <span class="material-icons">account_circle</span> Mi Perfil
+                </a>
                 <a href="{% url 'panel_admin' %}" class="flex items-center gap-2 text-secondary font-bold py-2">
                     <span class="material-icons">admin_panel_settings</span> Gestión
                 </a>

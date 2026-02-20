@@ -30,6 +30,7 @@ urlpatterns = [
     path("panel/tours/editar/<int:pk>/", views.editar_tour, name="editar_tour"),
     path("panel/galeria/", views.panel_galeria, name="panel_galeria"),
     path("panel/galeria/eliminar/<int:pk>/", views.eliminar_galeria, name="eliminar_galeria"),
+    path("panel/perfil/", views.perfil_admin, name="perfil_admin"),
 
     #logueo
     path('registro/', views.registro, name='registro'),

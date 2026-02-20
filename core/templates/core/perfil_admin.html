@@ -1,0 +1,174 @@
+{% extends "core/base.html" %}
+
+{% block title %}Mi Perfil | TortugaTour{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 transition-colors">
+    <div class="max-w-4xl mx-auto">
+
+        <!-- Cabecera -->
+        <div class="text-center mb-10">
+            <span
+                class="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block">Área
+                de Administración</span>
+            <h1 class="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">Mi Perfil</h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">Gestiona tu identidad, credenciales e información de
+                contacto del administrador.</p>
+        </div>
+
+        {% if messages %}
+        <div class="mb-8 space-y-2">
+            {% for message in messages %}
+            <div
+                class="p-4 rounded-xl text-sm font-bold {% if message.tags == 'success' %}bg-emerald-50 text-emerald-600 border border-emerald-100{% else %}bg-amber-50 text-amber-600 border border-amber-100{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data"
+            class="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+            {% csrf_token %}
+
+            <div class="grid md:grid-cols-3">
+                <!-- Columna Izquierda: Foto y Biografia -->
+                <div
+                    class="md:col-span-1 bg-slate-50 dark:bg-slate-900/50 p-8 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+
+                    <div class="relative group cursor-pointer mb-6">
+                        <div
+                            class="w-32 h-32 rounded-full overflow-hidden border-4 border-white dark:border-slate-700 shadow-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                            {% if perfil.foto %}
+                            <img id="previewFoto" src="{{ perfil.foto.url }}" alt="Avatar"
+                                class="w-full h-full object-cover">
+                            {% else %}
+                            <img id="previewFoto" src="" alt="" class="w-full h-full object-cover hidden">
+                            <span id="placeholderFoto" class="material-icons text-5xl text-slate-400">person</span>
+                            {% endif %}
+                        </div>
+                        <label for="fotoInput"
+                            class="absolute inset-0 bg-black/50 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                            <span class="material-icons">photo_camera</span>
+                            <span class="text-[10px] uppercase font-black tracking-widest mt-1">Cambiar</span>
+                        </label>
+                        <input type="file" id="fotoInput" name="foto" accept="image/*" class="hidden"
+                            onchange="previewImage(event)">
+                    </div>
+
+                    <h2 class="text-xl font-black text-slate-900 dark:text-white">
+                        {{ user.first_name }} {{ user.last_name }}
+                    </h2>
+                    <p class="text-xs text-primary font-bold uppercase tracking-widest mt-1">@{{ user.username }}</p>
+
+                    <div class="w-full mt-8 text-left space-y-2">
+                        <label class="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Biografía
+                            Corta</label>
+                        <textarea name="biografia" rows="4"
+                            class="w-full bg-white dark:bg-slate-800 border-none rounded-xl p-3 text-sm text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-primary shadow-sm"
+                            placeholder="Cuenta algo sobre ti...">{{ perfil.biografia|default:'' }}</textarea>
+                    </div>
+
+                </div>
+
+                <!-- Columna Derecha: Datos de acceso y seguridad -->
+                <div class="md:col-span-2 p-8 space-y-6">
+
+                    <h3
+                        class="text-lg font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-700 pb-3 flex items-center gap-2">
+                        <span class="material-icons text-primary">badge</span> Datos Personales
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Nombres</label>
+                            <input type="text" name="first_name" value="{{ user.first_name }}"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-sm text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Apellidos</label>
+                            <input type="text" name="last_name" value="{{ user.last_name }}"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-sm text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Correo
+                                Electrónico</label>
+                            <input type="email" name="email" value="{{ user.email }}"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-sm text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Teléfono</label>
+                            <input type="text" name="telefono" value="{{ perfil.telefono|default:'' }}"
+                                placeholder="+593 99 999 9999"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-sm text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                    </div>
+
+                    <h3
+                        class="text-lg font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-700 pb-3 mt-8 flex items-center gap-2">
+                        <span class="material-icons text-primary">security</span> Credenciales de Acceso
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Nombre
+                                de Usuario (Para Login)</label>
+                            <input type="text" name="username" value="{{ user.username }}"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-sm text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-primary outline-none bg-amber-50/50"
+                                required>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Nueva
+                                Contraseña (Dejar en blanco para no cambiar)</label>
+                            <input type="password" name="new_password" placeholder="••••••••••••"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-sm text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                    </div>
+
+                    <div class="pt-8 flex justify-end gap-3">
+                        <a href="{% url 'panel_admin' %}"
+                            class="px-6 py-3 rounded-xl font-bold text-sm text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors">Volver
+                            al Panel</a>
+                        <button type="submit"
+                            class="px-8 py-3 rounded-xl font-black text-sm text-white bg-primary hover:bg-primary-dark shadow-lg shadow-primary/30 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                            <span class="material-icons text-sm">save</span> GUARDAR CAMBIOS
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function previewImage(event) {
+        const input = event.target;
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = document.getElementById('previewFoto');
+                const placeholder = document.getElementById('placeholderFoto');
+
+                img.src = e.target.result;
+                img.classList.remove('hidden');
+
+                if (placeholder) {
+                    placeholder.classList.add('hidden');
+                }
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
+{% endblock %}

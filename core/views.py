@@ -1210,3 +1210,59 @@ def eliminar_galeria(request, pk):
         foto.delete()
         messages.success(request, "Imagen eliminada correctamente.")
     return redirect('panel_galeria')
+
+def eliminar_galeria(request, pk):
+    from .models import Galeria
+    foto = get_object_or_404(Galeria, pk=pk)
+    if request.method == 'POST':
+        foto.delete()
+        messages.success(request, "Foto eliminada de la galería.")
+    return redirect('panel_galeria')
+
+@login_required
+def perfil_admin(request):
+    from .models import UserProfile
+    from django.contrib.auth import update_session_auth_hash
+    
+    # Aseguramos que el usuario tiene un perfil asociado
+    perfil, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        # Info Basica
+        request.user.first_name = request.POST.get('first_name', request.user.first_name)
+        request.user.last_name = request.POST.get('last_name', request.user.last_name)
+        request.user.email = request.POST.get('email', request.user.email)
+        
+        # Validacion del nombre de usuario para no chocar (naive)
+        new_username = request.POST.get('username')
+        if new_username and new_username != request.user.username:
+            from django.contrib.auth.models import User
+            if not User.objects.filter(username=new_username).exists():
+                request.user.username = new_username
+            else:
+                messages.error(request, "Ese nombre de usuario ya está ocupado.")
+                return redirect('perfil_admin')
+        
+        request.user.save()
+        
+        # Opciones extra (Foto, Teléfono, Biografía)
+        if 'foto' in request.FILES:
+            perfil.foto = request.FILES['foto']
+        perfil.telefono = request.POST.get('telefono', perfil.telefono)
+        perfil.biografia = request.POST.get('biografia', perfil.biografia)
+        perfil.save()
+        
+        # Cambio de contraseña si se proporcionó una
+        new_password = request.POST.get('new_password')
+        if new_password:
+            request.user.set_password(new_password)
+            request.user.save()
+            update_session_auth_hash(request, request.user) # Evita que se cierre sesión
+            messages.success(request, "¡Contraseña actualizada!")
+            
+        messages.success(request, "Perfil guardado con éxito.")
+        return redirect('perfil_admin')
+
+    return render(request, 'core/perfil_admin.html', {
+        'perfil': perfil
+    })
