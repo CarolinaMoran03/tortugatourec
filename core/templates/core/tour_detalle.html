@@ -160,7 +160,9 @@
                                     required onchange="recalcular()">
                                     <option value="" disabled selected>Seleccionar fecha...</option>
                                     {% for s in salidas %}
-                                    <option value="{{ s.id }}" data-cupos="{{ s.cupos_disponibles }}">
+                                    <option value="{{ s.id }}" data-cupos="{{ s.cupos_disponibles }}" {% if
+                                        salida_seleccionada and salida_seleccionada==s.id|stringformat:'s' %}selected{%
+                                        endif %}>
                                         {{ s.fecha|date:"d M" }} — {{ s.hora|time:"H:i" }} ({{ s.cupos_disponibles }}
                                         disp.)
                                     </option>

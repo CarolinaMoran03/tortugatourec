@@ -236,10 +236,13 @@ def tour_detalle(request, pk):
     precio_adulto = price_display["adulto"]
     precio_nino = price_display["nino"]
 
+    salida_seleccionada = request.GET.get('salida')
+
     import json
     return render(request, "core/tour_detalle.html", {
         "tour": tour,
         "salidas": salidas,
+        "salida_seleccionada": salida_seleccionada,
         "resenas": resenas,
         "fotos": fotos,
         "currency_code": currency_code,
