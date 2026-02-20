@@ -602,6 +602,14 @@ def vista_logout(request):
     messages.info(request, "Has cerrado sesión correctamente.")
     return redirect('home')
 
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def mis_reservas(request):
+    """Vista para que el turista vea su historial de compras/reservas."""
+    reservas = Reserva.objects.filter(usuario=request.user).order_by('-fecha_reserva')
+    return render(request, 'core/mis_reservas.html', {'reservas': reservas})
+
 # ============================================
 # OTRAS PÁGINAS
 # ============================================

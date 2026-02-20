@@ -35,6 +35,8 @@ urlpatterns = [
     path('registro/', views.registro, name='registro'),
     path('login/', views.vista_login, name='login'),
     path('logout/', views.vista_logout, name='logout'),
+    # Ruta para ver las reservaciones del usuario
+    path('mis-reservas/', views.mis_reservas, name='mis_reservas'),
     
     # Ruta para ver el ticket después de reservar
     path('ticket/<int:reserva_id>/', views.ticket_reserva, name='ticket_reserva'),

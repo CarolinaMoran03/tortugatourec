@@ -110,6 +110,15 @@
                         <p class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ user.username }}</p>
                     </div>
 
+                    {% if not user.is_staff %}
+                    <a href="{% url 'mis_reservas' %}"
+                        class="flex items-center gap-1 bg-primary/10 text-primary px-3 py-2 rounded-xl hover:bg-primary hover:text-white transition-all group"
+                        title="Mis Reservas">
+                        <span class="material-icons text-xl">local_activity</span>
+                        <span class="text-[10px] font-black uppercase hidden lg:block">Viajes</span>
+                    </a>
+                    {% endif %}
+
                     {% if user.is_staff %}
                     <a href="{% url 'panel_admin' %}"
                         class="flex items-center gap-1 bg-secondary/10 text-secondary px-3 py-2 rounded-xl hover:bg-secondary hover:text-white transition-all group"
@@ -165,6 +174,11 @@
                 <span class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                     {{ user.username }}
                 </span>
+                {% if not user.is_staff %}
+                <a href="{% url 'mis_reservas' %}" class="flex items-center gap-2 text-primary font-bold py-2">
+                    <span class="material-icons">local_activity</span> Mis Reservas
+                </a>
+                {% endif %}
                 {% if user.is_staff %}
                 <a href="{% url 'panel_admin' %}" class="flex items-center gap-2 text-secondary font-bold py-2">
                     <span class="material-icons">admin_panel_settings</span> Gestión

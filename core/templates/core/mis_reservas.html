@@ -1,0 +1,149 @@
+{% extends "core/base.html" %}
+
+{% block title %}Mis Reservas | TortugaTour{% endblock %}
+
+{% block content %}
+<section class="max-w-5xl mx-auto px-6 py-12 min-h-[60vh]">
+
+    <div
+        class="mb-10 border-b border-slate-200 dark:border-slate-800 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                <span class="material-icons text-primary text-4xl">local_activity</span>
+                Mis Reservas y Viajes
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">
+                Aquí encontrarás el historial de todas tus aventuras y tickets comprados.
+            </p>
+        </div>
+        <a href="{% url 'tours' %}"
+            class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 whitespace-nowrap w-max">
+            Explorar más tours
+            <span class="material-icons">arrow_forward</span>
+        </a>
+    </div>
+
+    {% if reservas %}
+    <div class="grid gap-6">
+        {% for reserva in reservas %}
+        <div
+            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col md:flex-row items-center gap-6 group hover:border-primary transition-colors">
+
+            <!-- Icon/Status Indicator -->
+            <div class="flex-shrink-0 relative">
+                {% if reserva.estado == 'pagada' or reserva.estado == 'confirmada' %}
+                <div
+                    class="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-500 rounded-2xl flex items-center justify-center relative overflow-hidden">
+                    <span class="material-icons text-4xl z-10">verified</span>
+                    <!-- Shimmer effect -->
+                    <div
+                        class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite]">
+                    </div>
+                </div>
+                {% elif reserva.estado == 'pendiente' %}
+                <div
+                    class="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-500 rounded-2xl flex items-center justify-center">
+                    <span class="material-icons text-4xl">pending_actions</span>
+                </div>
+                {% else %}
+                <div
+                    class="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-500 rounded-2xl flex items-center justify-center">
+                    <span class="material-icons text-4xl">cancel</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Reserva Info -->
+            <div class="flex-grow flex flex-col items-center md:items-start text-center md:text-left">
+                <div class="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-1">
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white leading-tight">
+                        {{ reserva.salida.tour.nombre|truncatechars:45 }}
+                    </h2>
+
+                    {% if reserva.estado == 'pagada' or reserva.estado == 'confirmada' %}
+                    <span
+                        class="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 text-[10px] font-black uppercase px-2 py-0.5 rounded-full ring-1 ring-green-500/30">Confirmada</span>
+                    {% elif reserva.estado == 'pendiente' %}
+                    <span
+                        class="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-[10px] font-black uppercase px-2 py-0.5 rounded-full ring-1 ring-amber-500/30">Pendiente
+                        de Pago</span>
+                    {% else %}
+                    <span
+                        class="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400 text-[10px] font-black uppercase px-2 py-0.5 rounded-full ring-1 ring-red-500/30">Cancelada</span>
+                    {% endif %}
+                </div>
+
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-4">
+                    <span class="material-icons text-xs">event</span>
+                    {{ reserva.salida.fecha|date:"l, j \d\e F \d\e Y" }}
+                    <span class="px-1 text-slate-300 dark:text-slate-600">•</span>
+                    <span class="material-icons text-xs">schedule</span>
+                    {{ reserva.salida.hora|default:"Por definir" }}
+                </p>
+
+                <div class="flex flex-wrap justify-center md:justify-start gap-4 w-full">
+                    <div class="bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl flex-1 md:flex-none">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Personas</p>
+                        <p class="text-sm font-bold text-slate-700 dark:text-slate-300">
+                            {{ reserva.adultos }} Adultos <span class="text-slate-300 mx-1">|</span> {{ reserva.ninos }}
+                            Niños
+                        </p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl flex-1 md:flex-none">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total</p>
+                        <p class="text-sm font-black text-primary">${{ reserva.total_pagar }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex-shrink-0 w-full md:w-auto flex flex-col gap-2 mt-4 md:mt-0">
+                {% if reserva.estado == 'pagada' or reserva.estado == 'confirmada' %}
+                <a href="{% url 'ticket_reserva' reserva.id %}" target="_blank"
+                    class="w-full md:w-auto bg-primary text-white font-bold py-3 px-6 rounded-xl hover:bg-primary-dark transition shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                    <span class="material-icons">confirmation_number</span>
+                    Ver Ticket
+                </a>
+                <a href="{% url 'ver_ticket_pdf' reserva.id %}" download
+                    class="w-full md:w-auto bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white font-bold py-3 px-6 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center justify-center gap-2">
+                    <span class="material-icons">picture_as_pdf</span>
+                    Descargar PDF
+                </a>
+                {% elif reserva.estado == 'pendiente' %}
+                <a href="{% url 'checkout_reserva' reserva.id %}"
+                    class="w-full md:w-auto bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold py-3 px-6 rounded-xl hover:bg-primary dark:hover:bg-primary dark:hover:text-white transition shadow-xl shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2">
+                    <span class="material-icons">credit_score</span>
+                    Pagar Ahora
+                </a>
+                {% elif reserva.estado != 'cancelada' %}
+                <span class="text-xs font-bold text-slate-400 text-center block">Procesando...</span>
+                {% endif %}
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div
+        class="bg-white dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-700 rounded-3xl p-12 text-center max-w-2xl mx-auto mt-10">
+        <div
+            class="w-24 h-24 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300 dark:text-slate-700">
+            <span class="material-icons text-5xl">luggage</span>
+        </div>
+        <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-3">Aún no tienes aventuras a la vista</h3>
+        <p class="text-slate-500 dark:text-slate-400 mb-8 max-w-md mx-auto">
+            Todas tus reservas de Tours y viajes aparecerán mágicamente aquí en cuanto las realices. ¡Es hora de
+            explorar Galápagos!
+        </p>
+        <a href="{% url 'tours' %}"
+            class="inline-flex items-center justify-center gap-2 bg-primary text-white font-black py-4 px-8 rounded-full hover:bg-primary-dark transition-all duration-300 shadow-xl shadow-primary/30 uppercase tracking-widest text-sm">
+            <span class="material-icons">explore</span>
+            Buscar mi primer Tour
+        </a>
+    </div>
+    {% endif %}
+
+</section>
+{% endblock %}
