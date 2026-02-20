@@ -36,6 +36,7 @@ urlpatterns = [
     path('registro/', views.registro, name='registro'),
     path('login/', views.vista_login, name='login'),
     path('logout/', views.vista_logout, name='logout'),
+    path('', include('django.contrib.auth.urls')), # Password reset views
     # Ruta para ver las reservaciones del usuario
     path('mis-reservas/', views.mis_reservas, name='mis_reservas'),
     
