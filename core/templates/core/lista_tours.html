@@ -2,13 +2,14 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-6 py-12">
     <div class="flex items-center gap-4 mb-8">
-        <a href="{% url 'home' %}" class="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-all border border-slate-100">
+        <a href="{% url 'home' %}"
+            class="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-all border border-slate-100">
             <span class="material-icons">arrow_back</span>
         </a>
         <div>
             <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Tours Disponibles</h2>
             <p class="text-slate-500 font-medium">
-                Búsqueda para: <span class="text-slate-900 font-bold">{{ fecha_busqueda }}</span> · 
+                Búsqueda para: <span class="text-slate-900 font-bold">{{ fecha_busqueda }}</span> ·
                 <span class="text-slate-900 font-bold">{{ personas }} personas</span>
             </p>
         </div>
@@ -16,63 +17,64 @@
     </div>
 
 
-    <form method="get" class="mb-8 flex items-center gap-3">
-        <input type="hidden" name="destino" value="{{ request.GET.destino }}">
-        <input type="hidden" name="fecha" value="{{ request.GET.fecha }}">
-        <input type="hidden" name="personas" value="{{ request.GET.personas }}">
-        <label class="text-[10px] font-black uppercase text-slate-500 tracking-[0.15em]">Moneda</label>
-        <select name="currency" onchange="this.form.submit()"
-                class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
-            {% for code in currency_options %}
-            <option value="{{ code }}" {% if code == currency_code %}selected{% endif %}>{{ code }}</option>
-            {% endfor %}
-        </select>
-    </form>
+
 
     <div class="grid gap-10">
         {% for tour, salidas in tours_con_salidas.items %}
-        <div class="bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col lg:flex-row transition-all hover:scale-[1.01]">
-            
+        <div
+            class="bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col lg:flex-row transition-all hover:scale-[1.01]">
+
             <div class="lg:w-96 h-72 lg:h-auto relative">
-                <img src="{{ tour.imagen.url|default:tour.destino.imagen_url }}" class="w-full h-full object-cover" alt="{{ tour.nombre }}">
-                <div class="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-2xl shadow-sm border border-white">
-                    <span class="text-[10px] font-black text-primary uppercase tracking-widest">{{ tour.destino.nombre }}</span>
+                <img src="{{ tour.imagen.url|default:tour.destino.imagen_url }}" class="w-full h-full object-cover"
+                    alt="{{ tour.nombre }}">
+                <div
+                    class="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-2xl shadow-sm border border-white">
+                    <span class="text-[10px] font-black text-primary uppercase tracking-widest">{{ tour.destino.nombre
+                        }}</span>
                 </div>
             </div>
 
             <div class="p-10 flex-1 flex flex-col justify-between">
                 <div>
                     <div class="flex justify-between items-start mb-6">
-                        <h3 class="text-3xl font-black text-slate-900 leading-none tracking-tighter uppercase">{{ tour.nombre }}</h3>
+                        <h3 class="text-3xl font-black text-slate-900 leading-none tracking-tighter uppercase">{{
+                            tour.nombre }}</h3>
                         <div class="text-right">
-                            <span class="text-3xl font-black text-primary">{{ currency_code }} {{ tour.precio_adulto_display|floatformat:2 }}</span>
+                            <span class="text-3xl font-black text-primary">{{ currency_code }} {{
+                                tour.precio_adulto_display|floatformat:2 }}</span>
                             <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">Adulto</p>
-                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">NiÃ±o: {{ currency_code }} {{ tour.precio_nino_display|floatformat:2 }}</p>
+                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">NiÃ±o: {{
+                                currency_code }} {{ tour.precio_nino_display|floatformat:2 }}</p>
                         </div>
                     </div>
-                    
+
                     <p class="text-slate-500 text-sm mb-8 line-clamp-2 font-medium">{{ tour.descripcion }}</p>
 
                     <div class="space-y-4">
-                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <span class="material-icons text-sm text-primary">event_available</span> 
+                        <p
+                            class="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <span class="material-icons text-sm text-primary">event_available</span>
                             Salidas disponibles para este destino:
                         </p>
-                        
+
                         <div class="flex flex-wrap gap-3">
                             {% for s in salidas %}
                             <label class="relative group cursor-pointer">
-                                <input type="radio" name="salida_tour_{{ tour.id }}" value="{{ s.id }}" 
-                                       class="peer hidden" {% if forloop.first %}checked{% endif %}
-                                       onchange="updateReserveLink('{{ tour.id }}', this.value)">
-                                
-                                <div class="px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl transition-all 
+                                <input type="radio" name="salida_tour_{{ tour.id }}" value="{{ s.id }}"
+                                    class="peer hidden" {% if forloop.first %}checked{% endif %}
+                                    onchange="updateReserveLink('{{ tour.id }}', this.value)">
+
+                                <div
+                                    class="px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl transition-all 
                                             peer-checked:bg-slate-900 peer-checked:border-slate-900 peer-checked:text-white 
                                             group-hover:border-primary group-hover:bg-white peer-checked:group-hover:bg-slate-900">
                                     <div class="flex flex-col items-center">
-                                        <span class="text-xs font-black uppercase tracking-tighter">{{ s.fecha|date:"d M" }}</span>
-                                        <span class="text-lg font-black leading-none my-1">{{ s.hora|time:"H:i" }}</span>
-                                        <span class="text-[9px] opacity-60 font-bold uppercase">{{ s.cupos_disponibles }} cupos</span>
+                                        <span class="text-xs font-black uppercase tracking-tighter">{{ s.fecha|date:"d
+                                            M" }}</span>
+                                        <span class="text-lg font-black leading-none my-1">{{ s.hora|time:"H:i"
+                                            }}</span>
+                                        <span class="text-[9px] opacity-60 font-bold uppercase">{{ s.cupos_disponibles
+                                            }} cupos</span>
                                     </div>
                                 </div>
                             </label>
@@ -85,16 +87,18 @@
                     <div class="flex items-center gap-6">
                         <div class="flex items-center gap-2">
                             <span class="material-icons text-green-500 text-lg">check_circle</span>
-                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Confirmación Instantánea</span>
+                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Confirmación
+                                Instantánea</span>
                         </div>
                     </div>
 
-                    <a id="btn-reserva-{{ tour.id }}" 
-                       href="{% url 'tour_detalle' tour.id %}?salida={{ salidas.0.id }}&currency={{ currency_code }}" 
-                       class="group relative bg-slate-900 text-white px-10 py-4 rounded-[1.5rem] font-black text-xs tracking-widest transition-all hover:bg-primary shadow-xl shadow-slate-200 overflow-hidden">
+                    <a id="btn-reserva-{{ tour.id }}"
+                        href="{% url 'tour_detalle' tour.id %}?salida={{ salidas.0.id }}&currency={{ currency_code }}"
+                        class="group relative bg-slate-900 text-white px-10 py-4 rounded-[1.5rem] font-black text-xs tracking-widest transition-all hover:bg-primary shadow-xl shadow-slate-200 overflow-hidden">
                         <span class="relative z-10 flex items-center gap-2">
-                            RESERVAR AHORA 
-                            <span class="material-icons text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                            RESERVAR AHORA
+                            <span
+                                class="material-icons text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </span>
                     </a>
                 </div>
@@ -106,8 +110,10 @@
                 <span class="material-icons text-5xl text-slate-300">travel_explore</span>
             </div>
             <h3 class="text-2xl font-black text-slate-900 uppercase tracking-tighter">Sin salidas disponibles</h3>
-            <p class="text-slate-500 max-w-sm mx-auto mt-3 font-medium">No encontramos tours para esa fecha exacta. Intenta con un destino diferente o una fecha cercana.</p>
-            <a href="{% url 'home' %}" class="mt-8 inline-block bg-primary text-white px-10 py-4 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-primary/20 hover:scale-105 transition-all">
+            <p class="text-slate-500 max-w-sm mx-auto mt-3 font-medium">No encontramos tours para esa fecha exacta.
+                Intenta con un destino diferente o una fecha cercana.</p>
+            <a href="{% url 'home' %}"
+                class="mt-8 inline-block bg-primary text-white px-10 py-4 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-primary/20 hover:scale-105 transition-all">
                 Volver a buscar
             </a>
         </div>
@@ -125,7 +131,7 @@
         // Construimos la URL base de Django y añadimos el parámetro de salida
         const baseUrl = "{% url 'tour_detalle' 0 %}".replace('0', tourId);
         btn.href = `${baseUrl}?salida=${salidaId}&currency={{ currency_code }}`;
-        
+
         // Efecto visual de feedback
         btn.classList.add('scale-95');
         setTimeout(() => btn.classList.remove('scale-95'), 100);

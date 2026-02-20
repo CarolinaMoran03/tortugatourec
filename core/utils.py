@@ -7,9 +7,10 @@ from reportlab.platypus import Table, TableStyle
 
 def _fmt_money(value):
     try:
-        return f"${float(value):,.2f}"
+        # Formato profesional: $ 1,500.00 USD
+        return f"$ {float(value):,.2f} USD"
     except (TypeError, ValueError):
-        return "$0.00"
+        return "$ 0.00 USD"
 
 
 def generar_ticket_pdf(reserva):

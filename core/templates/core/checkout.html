@@ -3,83 +3,183 @@
 {% block title %}Checkout | TortugaTour{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-5xl mx-auto grid lg:grid-cols-2 gap-8">
-        <div class="bg-white rounded-2xl shadow p-8 border border-slate-200">
-            <h1 class="text-2xl font-bold text-slate-900 mb-4">Finalizar reserva</h1>
-            <p class="text-slate-600 mb-6">Completa el pago para confirmar tu cupo.</p>
-
-            <div class="space-y-3 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-slate-600">Tour</span>
-                    <span class="font-semibold text-slate-900">{{ tour.nombre }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-600">Destino</span>
-                    <span class="font-semibold text-slate-900">{{ destino.nombre }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-600">Fecha</span>
-                    <span class="font-semibold text-slate-900">{{ salida.fecha|date:"d/m/Y" }}</span>
-                </div>
-                {% if salida.hora %}
-                <div class="flex justify-between">
-                    <span class="text-slate-600">Hora</span>
-                    <span class="font-semibold text-slate-900">{{ salida.hora|time:"H:i" }}</span>
-                </div>
-                {% endif %}
-                <div class="flex justify-between">
-                    <span class="text-slate-600">Personas</span>
-                    <span class="font-semibold text-slate-900">{{ reserva.total_personas }}</span>
-                </div>
-            </div>
-
-            <div class="border-t border-slate-200 mt-6 pt-6 flex justify-between items-center">
-                <span class="text-slate-700 font-semibold">Total</span>
-                <span class="text-2xl font-bold text-slate-900">${{ reserva.total_pagar|floatformat:2 }}</span>
-            </div>
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 transition-colors">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <span
+                class="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block">Pago
+                Seguro</span>
+            <h1 class="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">Finalizar Reserva
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-4 max-w-xl mx-auto font-medium">Estás a un paso de confirmar
+                tu lugar en la aventura. Revisa los detalles de tu paquete y selecciona tu método de pago preferido para
+                emitir tu voucher.</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow p-8 border border-slate-200">
-            <h2 class="text-xl font-bold text-slate-900 mb-2">Metodo de pago</h2>
-            <p class="text-sm text-slate-600 mb-6">Tu pago se procesa de forma segura con proveedores internacionales.</p>
+        <div class="grid lg:grid-cols-12 gap-10">
+            <!-- Columna Resumen (Izquierda) -->
+            <div class="lg:col-span-7 space-y-6">
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+                    <h2 class="text-xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                        <span class="w-2 h-8 bg-primary rounded-full"></span>
+                        Resumen del Paquete
+                    </h2>
 
-            {% if lemonsqueezy_enabled %}
-            <form method="post" action="{% url 'create_lemonsqueezy_checkout' reserva.id %}" class="mb-6">
-                {% csrf_token %}
-                <button
-                    type="submit"
-                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition"
-                >
-                    Pagar con tarjeta
-                </button>
-            </form>
-            {% else %}
-            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
-                Lemon Squeezy no esta configurado todavia.
-            </p>
-            {% endif %}
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10">
+                        {% if tour.destino.imagen_url %}
+                        <div
+                            class="w-32 h-32 rounded-3xl overflow-hidden shrink-0 shadow-lg border-4 border-white dark:border-slate-700">
+                            <img src="{{ tour.destino.imagen_url }}" class="w-full h-full object-cover" alt="Destino">
+                        </div>
+                        {% endif %}
+                        <div class="text-center sm:text-left">
+                            <span
+                                class="text-[10px] text-primary bg-primary/10 px-3 py-1 rounded-full font-black uppercase tracking-widest inline-block mb-2">
+                                {{ destino.nombre }}
+                            </span>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white leading-tight mb-2">
+                                {{ tour.nombre }}
+                            </h3>
+                            <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                                Reserva #{{ reserva.id|stringformat:"06d" }}
+                            </p>
+                        </div>
+                    </div>
 
-            <div class="mb-2 text-center text-sm text-slate-500">o paga con</div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-700/50">
+                            <p
+                                class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-1">
+                                <span class="material-icons text-sm text-primary">calendar_today</span> Fecha
+                            </p>
+                            <p class="font-black text-slate-800 dark:text-slate-200">{{ salida.fecha|date:"d M, Y" }}
+                            </p>
+                        </div>
+                        {% if salida.hora %}
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-700/50">
+                            <p
+                                class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-1">
+                                <span class="material-icons text-sm text-primary">schedule</span> Salida
+                            </p>
+                            <p class="font-black text-slate-800 dark:text-slate-200">{{ salida.hora|time:"h:i A" }}</p>
+                        </div>
+                        {% endif %}
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-700/50">
+                            <p
+                                class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-1">
+                                <span class="material-icons text-sm text-primary">groups</span> Pasajeros
+                            </p>
+                            <p class="font-black text-slate-800 dark:text-slate-200">{{ reserva.total_personas }}
+                                totales</p>
+                            <p class="text-[10px] text-slate-500 mt-1">
+                                {{ reserva.adultos }} Adultos, {{ reserva.ninos }} Niños
+                            </p>
+                        </div>
+                        <div
+                            class="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-700/50">
+                            <p
+                                class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-1">
+                                <span class="material-icons text-sm text-primary">sell</span> Titular
+                            </p>
+                            <p class="font-bold text-slate-800 dark:text-slate-200 truncate"
+                                title="{{ reserva.nombre }}">{{ reserva.nombre }}</p>
+                            <p class="text-[10px] text-slate-500 mt-1 truncate">{{ reserva.correo }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            {% if paypal_enabled %}
-            <div id="paypal-button-container"></div>
-            <p id="paypal-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 mt-4"></p>
-            {% else %}
-            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                PayPal no esta configurado todavia.
-            </p>
-            {% endif %}
+            <!-- Columna Pagos (Derecha) -->
+            <div class="lg:col-span-5 relative">
+                <div class="sticky top-28 space-y-6">
+                    <!-- Tarjeta de Desglose de Pago -->
+                    <div class="bg-slate-900 text-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden relative">
+                        <div class="absolute -right-10 -top-10 text-white/5 pointer-events-none">
+                            <span class="material-icons" style="font-size: 15rem;">shopping_bag</span>
+                        </div>
 
-            <p class="text-xs text-slate-500 mt-6">
-                La reserva se confirma automaticamente cuando el pago se completa.
-            </p>
+                        <h2 class="text-sm font-black uppercase tracking-widest opacity-50 mb-6">Monto a Pagar</h2>
+
+                        <div class="flex items-end gap-2 mb-8">
+                            <span class="text-5xl font-black text-primary">
+                                $ {{ reserva.total_pagar|floatformat:2 }}
+                            </span>
+                            <span class="text-lg font-bold opacity-60 pb-1">USD</span>
+                        </div>
+
+                        {% if payment_currency and payment_currency != "USD" %}
+                        <div class="bg-white/10 rounded-xl p-4 mb-8 backdrop-blur-sm border border-white/5 text-center">
+                            <p
+                                class="text-[10px] font-bold text-slate-300 flex items-center justify-center gap-2 uppercase tracking-widest">
+                                <span class="material-icons text-primary text-sm">info</span>
+                                Proceso de cargo se emitirá en {{ payment_currency }}
+                            </p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Botones de Pago -->
+                        <div class="space-y-4 relative z-10 mt-10">
+                            {% if lemonsqueezy_enabled %}
+                            <form method="post" action="{% url 'create_lemonsqueezy_checkout' reserva.id %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                    class="w-full bg-white text-slate-900 hover:bg-slate-100 font-black py-4 px-6 rounded-2xl shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3">
+                                    <span class="material-icons text-primary">credit_card</span>
+                                    PAGAR CON TARJETA
+                                </button>
+                            </form>
+                            {% else %}
+                            <p
+                                class="text-xs text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded-xl p-3 text-center">
+                                Pago con tarjeta deshabilitado actualmente.
+                            </p>
+                            {% endif %}
+
+                            {% if paypal_enabled %}
+                            <div class="relative flex items-center justify-center py-6">
+                                <hr class="w-full border-slate-700">
+                                <span
+                                    class="absolute bg-slate-900 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Formas
+                                    Alternas</span>
+                            </div>
+
+                            <div id="paypal-button-container" class="rounded-2xl overflow-hidden shadow-xl z-20"></div>
+                            <p id="paypal-error"
+                                class="hidden text-[10px] font-bold text-red-400 bg-red-900/50 border border-red-800/50 rounded-xl p-4 mt-4 text-center">
+                            </p>
+                            {% endif %}
+                        </div>
+
+                        <div
+                            class="mt-8 pt-6 border-t border-slate-700/50 flex flex-col items-center justify-center gap-4">
+                            <div
+                                class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                <span class="material-icons text-sm text-primary">lock</span>
+                                Pagos 100% cifrados y seguros
+                            </div>
+
+                            <!-- Botón de Cancelar -->
+                            <a href="{% url 'tour_detalle' tour.id %}"
+                                class="text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-2 uppercase tracking-wider py-2">
+                                <span class="material-icons text-sm">arrow_back</span>
+                                Cancelar y volver al tour
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 {% if paypal_enabled and paypal_client_id %}
-<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency={{ payment_currency }}&intent=capture"></script>
+<script
+    src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency={{ payment_currency }}&intent=capture"></script>
 <script>
     function getCookie(name) {
         const value = `; ${document.cookie}`;

@@ -236,6 +236,7 @@ def tour_detalle(request, pk):
     precio_adulto = price_display["adulto"]
     precio_nino = price_display["nino"]
 
+    import json
     return render(request, "core/tour_detalle.html", {
         "tour": tour,
         "salidas": salidas,
@@ -247,6 +248,7 @@ def tour_detalle(request, pk):
         "precio_nino": precio_nino,
         "payment_currency": _currency(),
         "currency_options": list(getattr(settings, "CURRENCY_RATES", {}).keys()),
+        "currency_rates_json": json.dumps(getattr(settings, "CURRENCY_RATES", {})),
         "whatsapp_message": f"Hola, quiero informacion del tour {tour.nombre}",
     })
 
