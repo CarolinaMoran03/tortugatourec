@@ -134,6 +134,17 @@
                     </a>
                     {% endif %}
 
+                    {% for group in user.groups.all %}
+                    {% if group.name == 'secretaria' %}
+                    <a href="{% url 'secretaria_reservar' %}"
+                        class="flex items-center gap-1 bg-teal-100 dark:bg-teal-900 text-teal-600 hover:text-white hover:bg-teal-600 px-3 py-2 rounded-xl transition-all group"
+                        title="Ventas">
+                        <span class="material-icons text-xl">point_of_sale</span>
+                        <span class="text-[10px] font-black uppercase hidden lg:block">Vender</span>
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+
                     <form action="{% url 'logout' %}" method="post" class="inline">
                         {% csrf_token %}
                         <button type="submit" class="p-2 text-slate-400 hover:text-red-500 transition"
@@ -193,6 +204,14 @@
                     <span class="material-icons">admin_panel_settings</span> Gestión
                 </a>
                 {% endif %}
+
+                {% for group in user.groups.all %}
+                {% if group.name == 'secretaria' %}
+                <a href="{% url 'secretaria_reservar' %}" class="flex items-center gap-2 text-teal-500 font-bold py-2">
+                    <span class="material-icons">point_of_sale</span> Reservar Pasajero
+                </a>
+                {% endif %}
+                {% endfor %}
                 <form action="{% url 'logout' %}" method="post">
                     {% csrf_token %}
                     <button type="submit" class="flex items-center gap-2 text-red-500 font-bold py-2">

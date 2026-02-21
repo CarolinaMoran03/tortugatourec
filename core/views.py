@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import Group, User
 from django.core.mail import send_mail, EmailMessage, EmailMultiAlternatives
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -1455,3 +1456,177 @@ def perfil_admin(request):
     return render(request, 'core/perfil_admin.html', {
         'perfil': perfil
     })
+
+#secretaria
+def _parse_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+def es_secretaria(user):
+    return user.is_authenticated and user.groups.filter(name="secretaria").exists()
+
+
+def puede_reservar_asistida(user):
+    return user.is_staff or es_secretaria(user)
+
+
+@login_required
+@user_passes_test(puede_reservar_asistida)
+def secretaria_reservar(request):
+    destinos = Destino.objects.all().order_by("nombre")
+    destino_id = request.GET.get("destino", "")
+    fecha = request.GET.get("fecha", "")
+    personas = _parse_int(request.GET.get("personas"), 1)
+    if personas < 1:
+        personas = 1
+
+    tours_con_salidas = {}
+    destino_seleccionado = None
+    if destino_id and fecha:
+        destino_seleccionado = Destino.objects.filter(id=destino_id).first()
+        if destino_seleccionado:
+            salidas = (
+                SalidaTour.objects.filter(
+                    tour__destino=destino_seleccionado,
+                    fecha=fecha,
+                    cupos_disponibles__gte=personas,
+                )
+                .select_related("tour", "tour__destino")
+                .order_by("tour__nombre", "hora")
+            )
+            for salida in salidas:
+                tours_con_salidas.setdefault(salida.tour, []).append(salida)
+
+    if request.method == "POST":
+        salida_id = request.POST.get("salida_id")
+        adultos = _parse_int(request.POST.get("adultos"))
+        ninos = _parse_int(request.POST.get("ninos"))
+        nombre = (request.POST.get("nombre") or "").strip()
+        apellidos = (request.POST.get("apellidos") or "").strip()
+        correo = (request.POST.get("correo") or "").strip().lower()
+        telefono = (request.POST.get("telefono") or "").strip()
+        identificacion = (request.POST.get("identificacion") or "").strip()
+
+        salida = get_object_or_404(SalidaTour.objects.select_related("tour"), id=salida_id)
+        total_personas = adultos + ninos
+        if total_personas <= 0:
+            messages.error(request, "Debes registrar al menos un pasajero.")
+            return redirect("secretaria_reservar")
+        if not salida.hay_cupo(adultos, ninos):
+            messages.error(request, "No hay cupos disponibles para esa salida.")
+            return redirect("secretaria_reservar")
+        if not all([nombre, apellidos, correo, telefono, identificacion]):
+            messages.error(request, "Completa todos los datos del cliente.")
+            return redirect("secretaria_reservar")
+
+        total_pagar = (adultos * salida.tour.precio_adulto_final()) + (ninos * salida.tour.precio_nino_final())
+        reserva = Reserva.objects.create(
+            usuario=None,
+            salida=salida,
+            adultos=adultos,
+            ninos=ninos,
+            total_pagar=total_pagar,
+            nombre=nombre,
+            apellidos=apellidos,
+            correo=correo,
+            telefono=telefono,
+            identificacion=identificacion,
+            estado="pendiente",
+        )
+        messages.success(
+            request,
+            f"Reserva #{reserva.id:06d} creada. Ahora puedes cobrarla desde checkout o panel.",
+        )
+        return redirect("checkout_reserva", reserva_id=reserva.id)
+
+    return render(
+        request,
+        "core/panel/secretaria_reservar.html",
+        {
+            "destinos": destinos,
+            "tours_con_salidas": tours_con_salidas,
+            "destino_id": destino_id,
+            "fecha_busqueda": fecha,
+            "personas": personas,
+            "destino_seleccionado": destino_seleccionado,
+        },
+    )
+
+@login_required
+@user_passes_test(es_admin)
+def admin_secretarias(request):
+    group_secretaria, _ = Group.objects.get_or_create(name="secretaria")
+
+    if request.method == "POST":
+        username = (request.POST.get("username") or "").strip()
+        password = request.POST.get("password") or ""
+        first_name = (request.POST.get("first_name") or "").strip()
+        last_name = (request.POST.get("last_name") or "").strip()
+        email = (request.POST.get("email") or "").strip().lower()
+
+        if not username or not password:
+            messages.error(request, "Usuario y contraseña son obligatorios.")
+            return redirect("admin_secretarias")
+        if len(password) < 8:
+            messages.error(request, "La contraseña debe tener mínimo 8 caracteres.")
+            return redirect("admin_secretarias")
+        if User.objects.filter(username__iexact=username).exists():
+            messages.error(request, "Ese usuario ya existe.")
+            return redirect("admin_secretarias")
+
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            is_staff=False,
+        )
+        user.groups.add(group_secretaria)
+        messages.success(request, f"Secretaria '{username}' creada con éxito.")
+        return redirect("admin_secretarias")
+
+    secretarias = group_secretaria.user_set.all().order_by("username")
+    return render(
+        request,
+        "core/panel/secretarias.html",
+        {"secretarias": secretarias},
+    )
+
+
+@login_required
+@user_passes_test(es_admin)
+def toggle_secretaria_estado(request, user_id):
+    if request.method != "POST":
+        return redirect("admin_secretarias")
+
+    group_secretaria = Group.objects.filter(name="secretaria").first()
+    secretaria = get_object_or_404(User, id=user_id)
+    if not group_secretaria or not secretaria.groups.filter(id=group_secretaria.id).exists():
+        messages.error(request, "El usuario seleccionado no pertenece al rol secretaria.")
+        return redirect("admin_secretarias")
+
+    secretaria.is_active = not secretaria.is_active
+    secretaria.save(update_fields=["is_active"])
+    estado = "activada" if secretaria.is_active else "desactivada"
+    messages.success(request, f"Cuenta de '{secretaria.username}' {estado} correctamente.")
+    return redirect("admin_secretarias")
+
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_secretaria(request, user_id):
+    if request.method != "POST":
+        return redirect("admin_secretarias")
+
+    group_secretaria = Group.objects.filter(name="secretaria").first()
+    secretaria = get_object_or_404(User, id=user_id)
+    if not group_secretaria or not secretaria.groups.filter(id=group_secretaria.id).exists():
+        messages.error(request, "El usuario seleccionado no pertenece al rol secretaria.")
+        return redirect("admin_secretarias")
+
+    secretaria.delete()
+    messages.success(request, f"Secretaria '{secretaria.username}' eliminada definitivamente.")
+    return redirect("admin_secretarias")

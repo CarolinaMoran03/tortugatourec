@@ -34,6 +34,10 @@ urlpatterns = [
     path("panel/agencias/", views.admin_agencias, name="admin_agencias"),
     path("panel/agencias/nueva/", views.crear_agencia, name="crear_agencia"),
     path("panel/agencias/<int:user_id>/toggle/", views.toggle_agencia, name="toggle_agencia"),
+    path("panel/secretarias/", views.admin_secretarias, name="admin_secretarias"),
+    path("panel/secretaria/reservar/", views.secretaria_reservar, name="secretaria_reservar"),
+    path("panel/secretarias/<int:user_id>/toggle/", views.toggle_secretaria_estado, name="toggle_secretaria_estado"),
+    path("panel/secretarias/<int:user_id>/eliminar/", views.eliminar_secretaria, name="eliminar_secretaria"),
 
     #logueo
     path('registro/', views.registro, name='registro'),
