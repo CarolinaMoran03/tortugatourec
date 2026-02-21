@@ -1426,6 +1426,7 @@ def eliminar_galeria(request, pk):
     return redirect('panel_galeria')
 
 @login_required
+@login_required
 def perfil_admin(request):
     from .models import UserProfile
     from django.contrib.auth import update_session_auth_hash
@@ -1477,8 +1478,22 @@ def perfil_admin(request):
         messages.success(request, "Perfil guardado con éxito.")
         return redirect('perfil_admin')
 
+    # Si es secretaria, obtener sus reservas
+    reservas_creadas = []
+    total_ventas = Decimal('0.00')
+    total_personas = 0
+    
+    if is_secretaria:
+        reservas_creadas = Reserva.objects.filter(creado_por=request.user).select_related('salida__tour').order_by('-fecha_reserva')
+        total_ventas = sum(r.total_pagar for r in reservas_creadas)
+        total_personas = sum(r.total_personas() for r in reservas_creadas)
+    
     return render(request, 'core/perfil_admin.html', {
-        'perfil': perfil
+        'perfil': perfil,
+        'is_secretaria': is_secretaria,
+        'reservas_creadas': reservas_creadas,
+        'total_ventas': total_ventas,
+        'total_personas': total_personas,
     })
 
 #secretaria

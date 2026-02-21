@@ -111,7 +111,7 @@
                     </div>
 
                     {% if not user.is_staff %}
-                    <a href="{% url 'mis_reservas' %}"
+                    <a href="{% url 'mis_reservas' %}" id="nav-viajes-user"
                         class="flex items-center gap-1 bg-primary/10 text-primary px-3 py-2 rounded-xl hover:bg-primary hover:text-white transition-all group"
                         title="Mis Reservas">
                         <span class="material-icons text-xl">local_activity</span>
@@ -136,6 +136,18 @@
 
                     {% for group in user.groups.all %}
                     {% if group.name == 'secretaria' %}
+                    <style>
+                        #nav-viajes-user,
+                        #nav-viajes-mobile {
+                            display: none !important;
+                        }
+                    </style>
+                    <a href="{% url 'perfil_admin' %}"
+                        class="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-600 hover:text-white hover:bg-emerald-600 px-3 py-2 rounded-xl transition-all group"
+                        title="Mis Ventas">
+                        <span class="material-icons text-xl">trending_up</span>
+                        <span class="text-[10px] font-black uppercase hidden lg:block">Mis Ventas</span>
+                    </a>
                     <a href="{% url 'panel_admin' %}"
                         class="flex items-center gap-1 bg-secondary/10 text-secondary px-3 py-2 rounded-xl hover:bg-secondary hover:text-white transition-all group"
                         title="Panel de Control">
@@ -198,7 +210,8 @@
                     {{ user.username }}
                 </span>
                 {% if not user.is_staff %}
-                <a href="{% url 'mis_reservas' %}" class="flex items-center gap-2 text-primary font-bold py-2">
+                <a href="{% url 'mis_reservas' %}" id="nav-viajes-mobile"
+                    class="flex items-center gap-2 text-primary font-bold py-2">
                     <span class="material-icons">local_activity</span> Mis Reservas
                 </a>
                 {% endif %}
@@ -213,6 +226,9 @@
 
                 {% for group in user.groups.all %}
                 {% if group.name == 'secretaria' %}
+                <a href="{% url 'perfil_admin' %}" class="flex items-center gap-2 text-emerald-500 font-bold py-2">
+                    <span class="material-icons">trending_up</span> Mis Ventas
+                </a>
                 <a href="{% url 'panel_admin' %}" class="flex items-center gap-2 text-secondary font-bold py-2">
                     <span class="material-icons">admin_panel_settings</span> Gestión
                 </a>

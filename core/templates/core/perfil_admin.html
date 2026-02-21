@@ -7,6 +7,7 @@
     <div class="max-w-4xl mx-auto">
 
         <!-- Cabecera -->
+        {% if not is_secretaria %}
         <div class="text-center mb-10">
             <span
                 class="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block">Área
@@ -15,7 +16,15 @@
             <p class="text-slate-500 dark:text-slate-400 mt-2">Gestiona tu identidad, credenciales e información de
                 contacto del administrador.</p>
         </div>
-
+        {% else %}
+        <div class="text-center mb-10">
+            <span
+                class="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block">Panel de Secretaria</span>
+            <h1 class="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">Mi Perfil</h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">Aquí puedes ver tu información de usuario y tus ventas.</p>
+        </div>
+        {% endif %}
+        
         {% if messages %}
         <div class="mb-8 space-y-2">
             {% for message in messages %}
@@ -27,6 +36,7 @@
         </div>
         {% endif %}
 
+        {% if not is_secretaria %}
         <form method="post" enctype="multipart/form-data"
             class="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
             {% csrf_token %}
@@ -148,6 +158,144 @@
                 </div>
             </div>
         </form>
+        {% endif %}
+
+        <!-- Datos del Perfil para Secretarias -->
+        {% if is_secretaria %}
+        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden p-8 mb-8">
+            <h3 class="text-lg font-black text-slate-900 flex items-center gap-2 mb-6">
+                <span class="material-icons text-primary">person</span> Mi Información
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Usuario</p>
+                    <p class="text-lg font-black text-slate-900">@{{ user.username }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Nombre Completo</p>
+                    <p class="text-lg font-black text-slate-900">{{ user.first_name }} {{ user.last_name }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Correo</p>
+                    <p class="text-sm text-slate-700">{{ user.email }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Estado</p>
+                    <span class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700">Activa</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE VENTAS PARA SECRETARIAS -->
+        <div class="mt-12 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div class="bg-gradient-to-r from-primary to-primary/80 p-8 text-white">
+                <h2 class="text-2xl font-black flex items-center gap-2">
+                    <span class="material-icons">trending_up</span> Mis Ventas
+                </h2>
+                <p class="text-primary-light mt-1 text-sm">Resumen de todas las reservas que has creado</p>
+            </div>
+
+            <div class="p-8">
+                <!-- Estadísticas -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-slate-50 rounded-2xl p-6 text-center">
+                        <p class="text-slate-500 text-xs font-bold uppercase tracking-widest">Total de Reservas</p>
+                        <p class="text-4xl font-black text-slate-900 mt-2">{{ reservas_creadas|length }}</p>
+                    </div>
+                    <div class="bg-emerald-50 rounded-2xl p-6 text-center">
+                        <p class="text-emerald-600 text-xs font-bold uppercase tracking-widest">Ingresos Generados</p>
+                        <p class="text-4xl font-black text-emerald-700 mt-2">${{ total_ventas|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-blue-50 rounded-2xl p-6 text-center">
+                        <p class="text-blue-600 text-xs font-bold uppercase tracking-widest">Pasajeros Atendidos</p>
+                        <p class="text-4xl font-black text-blue-700 mt-2">{{ total_personas }}</p>
+                    </div>
+                </div>
+
+                <!-- Tickets de Ventas -->
+                {% if reservas_creadas %}
+                <h3 class="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                    <span class="material-icons text-primary">confirmation_number</span> Tickets de Mis Ventas
+                </h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {% for reserva in reservas_creadas %}
+                    <div
+                        class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-lg transition-all">
+                        <!-- Encabezado del Ticket -->
+                        <div
+                            class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 border-b-2 border-dashed border-slate-600">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <p class="text-[10px] uppercase font-bold tracking-widest text-slate-300">Referencia
+                                    </p>
+                                    <p class="text-2xl font-black">#{{ reserva.id|stringformat:"05d" }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-3 py-1 rounded-lg text-xs font-bold {% if reserva.estado == 'pagada' or reserva.tiene_pago %}bg-emerald-500/20 text-emerald-300{% elif reserva.estado == 'pendiente' %}bg-yellow-500/20 text-yellow-300{% elif reserva.estado == 'cancelada' %}bg-red-500/20 text-red-300{% else %}bg-slate-500/20 text-slate-200{% endif %}">
+                                        {% if reserva.estado == 'pagada' or reserva.tiene_pago %}PAGADA{% elif reserva.estado == 'pendiente' %}PENDIENTE{% elif reserva.estado == 'cancelada' %}CANCELADA{% else %}{{ reserva.estado|upper }}{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-300">{{ reserva.fecha_reserva|date:"d de F de Y - H:i" }}</p>
+                        </div>
+
+                        <!-- Detalles del Pasajero -->
+                        <div class="p-6 border-b border-slate-200">
+                            <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Pasajero</p>
+                            <p class="text-lg font-black text-slate-900">{{ reserva.nombre }} {{ reserva.apellidos }}
+                            </p>
+                            <p class="text-xs text-slate-600 mt-2">📧 {{ reserva.correo }}</p>
+                            <p class="text-xs text-slate-600">📱 {{ reserva.telefono }}</p>
+                        </div>
+
+                        <!-- Detalles del Tour y Salida -->
+                        <div class="p-6 border-b border-slate-200">
+                            <p class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-2">Tour Reservado
+                            </p>
+                            <p class="text-base font-black text-primary">{{ reserva.salida.tour.nombre }}</p>
+                            <p class="text-xs text-slate-600 mt-2">
+                                <span class="material-icons text-sm align-middle">calendar_today</span>
+                                {{ reserva.salida.fecha|date:"d/m/Y" }}
+                                {% if reserva.salida.hora %}· {{ reserva.salida.hora|time:"H:i" }}{% endif %}
+                            </p>
+                        </div>
+
+                        <!-- Detalles de Pasajeros y Monto -->
+                        <div class="p-6 bg-slate-100">
+                            <div class="grid grid-cols-3 gap-4 mb-4">
+                                <div class="text-center">
+                                    <p class="text-xs text-slate-600 uppercase font-bold">Adultos</p>
+                                    <p class="text-2xl font-black text-slate-900">{{ reserva.adultos }}</p>
+                                </div>
+                                <div class="text-center border-x border-slate-300">
+                                    <p class="text-xs text-slate-600 uppercase font-bold">Niños</p>
+                                    <p class="text-2xl font-black text-slate-900">{{ reserva.ninos }}</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs text-slate-600 uppercase font-bold">Total</p>
+                                    <p class="text-2xl font-black text-slate-900">{{ reserva.total_personas }}</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-xl p-4 border-2 border-slate-900">
+                                <p class="text-xs text-slate-600 uppercase font-bold tracking-widest">Monto Total</p>
+                                <p class="text-3xl font-black text-emerald-600">${{ reserva.total_pagar|floatformat:2 }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="bg-slate-50 rounded-2xl p-12 text-center">
+                    <span class="material-icons text-5xl text-slate-300 block mb-4">shopping_cart_checkout</span>
+                    <p class="text-slate-500 font-bold text-lg">Aún no has creado ninguna venta</p>
+                    <p class="text-slate-400 text-sm mt-1">Tus tickets de ventas aparecerán aquí</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
