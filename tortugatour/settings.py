@@ -152,7 +152,7 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "TortugaTour <noreply@example.com>")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "TortugaTur <noreply@example.com>")
 AGENCIA_EMAIL = os.getenv("AGENCIA_EMAIL", "")
 
 LOGIN_REDIRECT_URL = 'home'

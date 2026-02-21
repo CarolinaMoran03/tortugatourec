@@ -24,7 +24,7 @@
                     class="text-white text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                     <span class="material-icons text-3xl mb-2 block">zoom_in</span>
                     <p class="font-bold text-xs tracking-widest uppercase text-slate-200">
-                        {{ foto.tour.nombre|default:"TortugaTour" }}
+                        {{ foto.tour.nombre|default:"TortugaTur" }}
                     </p>
                 </div>
             </div>
@@ -73,7 +73,7 @@
         {% for foto in fotos %}
     {
         url: "{{ foto.obtener_imagen_url|escapejs }}",
-            tourName: "{{ foto.tour.nombre|default:'Galería de TortugaTour'|escapejs }}"
+            tourName: "{{ foto.tour.nombre|default:'Galería de TortugaTur'|escapejs }}"
     } {% if not forloop.last %}, {% endif %}
     {% endfor %}
     ];

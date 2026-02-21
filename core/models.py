@@ -220,7 +220,7 @@ class Galeria(models.Model):
             txt = Image.new('RGBA', img.size, (255, 255, 255, 0))
             draw = ImageDraw.Draw(txt)
             
-            text = "TortugaTour"
+            text = "TortugaTur"
             width, height = img.size
             fontsize = max(int(width / 20), 12)  # Letra pequeña (1/20 del ancho)
 

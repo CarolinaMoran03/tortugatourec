@@ -2,7 +2,7 @@ from django.urls import path, include
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
-# URLs de TortugaTour
+# URLs de TortugaTur
 urlpatterns = [
     path("", views.home, name="home"),
     path("tours/", views.tours, name="tours"),  # lista general (TODOS)

@@ -457,7 +457,7 @@ def procesar_pago(request):
                 pdf_content = pdf_buffer.getvalue()
                 pdf_buffer.close()
                 
-                asunto = f"✅ Confirmación de Reserva #{reserva.id:06d} - TortugaTour"
+                asunto = f"✅ Confirmación de Reserva #{reserva.id:06d} - TortugaTur"
                 mensaje_html = render_to_string("core/email_ticket.html", {"reserva": reserva})
                 
                 # Enviar al cliente
@@ -468,7 +468,7 @@ def procesar_pago(request):
                     to=[reserva.correo if reserva.correo else email],
                 )
                 email_cliente.content_subtype = "html"
-                email_cliente.attach(f"Ticket_TortugaTour_{reserva.id}.pdf", pdf_content, "application/pdf")
+                email_cliente.attach(f"Ticket_TortugaTur_{reserva.id}.pdf", pdf_content, "application/pdf")
                 email_cliente.send(fail_silently=True)
                 
             except Exception as e:
@@ -755,7 +755,7 @@ def registro(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, f"¡Bienvenido a TortugaTour, {user.first_name}!")
+            messages.success(request, f"¡Bienvenido a TortugaTur, {user.first_name}!")
             return redirect('home')
     else:
         form = RegistroTuristaForm()
@@ -884,7 +884,7 @@ def _send_ticket_email(reserva):
         pdf_buffer = generar_ticket_pdf(reserva)
         pdf_content = pdf_buffer.getvalue()
         pdf_buffer.close()
-        subject = f"Confirmacion de Reserva #{reserva.id:06d} - TortugaTour"
+        subject = f"Confirmacion de Reserva #{reserva.id:06d} - TortugaTur"
         html_body = render_to_string(
             "core/email_ticket.html",
             {
@@ -910,7 +910,7 @@ def _send_ticket_email(reserva):
             bcc=bcc_list,
         )
         email_cliente.content_subtype = "html"
-        email_cliente.attach(f"Ticket_TortugaTour_{reserva.id}.pdf", pdf_content, "application/pdf")
+        email_cliente.attach(f"Ticket_TortugaTur_{reserva.id}.pdf", pdf_content, "application/pdf")
         email_cliente.send(fail_silently=True)
     except Exception:
         logger.exception("No se pudo enviar ticket para la reserva %s", reserva.id)
@@ -1148,7 +1148,7 @@ def create_lemonsqueezy_checkout(request, reserva_id):
                 },
                 "product_options": {
                     "redirect_url": f"{site_url}{reverse('home')}?pago=ok",
-                    "receipt_button_text": "Volver a TortugaTour",
+                    "receipt_button_text": "Volver a TortugaTur",
                     "receipt_link_url": f"{site_url}{reverse('home')}",
                 },
             },
@@ -1228,11 +1228,11 @@ def create_paypal_order(request, reserva_id):
                 "custom_id": str(reserva.id),
                 "reference_id": str(reserva.id),
                 "amount": {"currency_code": currency, "value": f"{amount_str}"},
-                "description": f"Reserva TortugaTour #{reserva.id}",
+                "description": f"Reserva TortugaTur #{reserva.id}",
             }
         ],
         "application_context": {
-            "brand_name": "TortugaTour",
+            "brand_name": "TortugaTur",
             "shipping_preference": "NO_SHIPPING",
             "user_action": "PAY_NOW",
         },

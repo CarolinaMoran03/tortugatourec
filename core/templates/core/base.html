@@ -14,7 +14,7 @@
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}TortugaTour - Tours en Galápagos{% endblock %}</title>
+    <title>{% block title %}TortugaTur - Tours en Galápagos{% endblock %}</title>
     <!-- Favicon Distintivo Personalizado -->
     <link rel="icon" type="image/png" href="{% static 'icon/logo.png' %}">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -30,8 +30,8 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: "#22c55e",
-                        "primary-dark": "#16a34a",
+                        primary: "#007e37",
+                        "primary-dark": "#01532d",
                         secondary: "#eab308",
                         "background-light": "#f6f8f8",
                         "surface-dark": "#1a2c33",
@@ -53,9 +53,9 @@
         class="fixed w-full z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
             <a href="{% url 'home' %}" class="flex items-center gap-2 notranslate" translate="no">
-                <span class="material-icons text-primary text-3xl">travel_explore</span>
+                <img src="{% static 'icon/logo.png' %}" alt="TortugaTur Logo" class="h-10 w-auto object-contain">
                 <span class="font-bold text-xl md:text-2xl tracking-tighter whitespace-nowrap">Tortuga<span
-                        class="text-primary">Tour</span></span>
+                        class="text-primary">Tur</span></span>
             </a>
 
             <div class="hidden lg:flex gap-8 font-bold text-sm uppercase tracking-wider">
@@ -326,7 +326,7 @@
             const btn = document.getElementById('whatsapp-btn-dynamic');
             if (btn) {
                 const urlActual = window.location.href;
-                const mensajePersonalizado = `¡Hola TortugaTour! Me gustaría recibir asesoría súper rápida para planificar mi aventura en Galápagos.\n\nEstaba explorando esta sección de su web: ${urlActual}`;
+                const mensajePersonalizado = `¡Hola TortugaTur! Me gustaría recibir asesoría súper rápida para planificar mi aventura en Galápagos.\n\nEstaba explorando esta sección de su web: ${urlActual}`;
                 btn.href = `https://wa.me/5930939833971?text=${encodeURIComponent(mensajePersonalizado)}`;
             }
         });
@@ -336,8 +336,10 @@
         <div class="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-4 gap-12">
             <div class="space-y-4">
                 <div class="flex items-center gap-2 text-white">
-                    <span class="material-icons text-primary text-3xl">travel_explore</span>
-                    <span class="font-bold text-2xl tracking-tighter">TortugaTour</span>
+                    <img src="{% static 'icon/logo.png' %}" alt="TortugaTur Logo"
+                        class="h-10 w-auto object-contain bg-white rounded-full p-1">
+                    <span class="font-bold text-2xl tracking-tighter">Tortuga<span
+                            class="text-primary">Tur</span></span>
                 </div>
                 <p class="text-sm text-slate-400 leading-relaxed">
                     Tours sostenibles en las Islas Galápagos. Comprometidos con la conservación y la mejor experiencia
@@ -382,7 +384,7 @@
         </div>
 
         <div class="border-t border-white/5 py-8 text-center text-xs text-slate-500 uppercase tracking-widest">
-            &copy; 2026 TortugaTour. Todos los derechos reservados.
+            &copy; 2026 TortugaTur. Todos los derechos reservados.
         </div>
     </footer>
 
