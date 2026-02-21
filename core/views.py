@@ -15,6 +15,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils import timezone
+from datetime import timedelta
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -147,22 +148,53 @@ def tour_detalle(request, pk):
             identificacion = request.POST.get("identificacion", "")
 
             # Validaciones
-            if not salida_id:
-                error_msg = "Debes seleccionar una fecha."
-                if is_ajax:
-                    return JsonResponse({'error': error_msg}, status=400)
-                messages.error(request, error_msg)
-                return redirect('tour_detalle', pk=pk)
-
-            salida = get_object_or_404(SalidaTour, id=salida_id, tour=tour)
+            es_agencia = hasattr(request.user, 'perfil') and request.user.perfil.is_agencia
             
-            # Validar que la fecha y hora seleccionada no haya pasado al momento de enviar POST
-            if salida.fecha < fecha_hoy or (salida.fecha == fecha_hoy and salida.hora and salida.hora < hora_actual):
-                error_msg = "Lo sentimos, el horario para este tour ya ha pasado. Por favor selecciona otra fecha u horario."
-                if is_ajax:
-                    return JsonResponse({'error': error_msg}, status=400)
-                messages.error(request, error_msg)
-                return redirect('tour_detalle', pk=pk)
+            fecha_agencia = request.POST.get("fecha_agencia")
+
+            if es_agencia and fecha_agencia:
+                from datetime import datetime
+                try:
+                    fecha_obj = datetime.strptime(fecha_agencia, "%Y-%m-%d").date()
+                except ValueError:
+                    error_msg = "Formato de fecha inválido."
+                    if is_ajax: return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
+                    
+                if fecha_obj < fecha_hoy:
+                    error_msg = "No puedes seleccionar una fecha en el pasado."
+                    if is_ajax: return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
+                
+                # Buscar o crear la salida
+                salida = SalidaTour.objects.filter(tour=tour, fecha=fecha_obj).first()
+                if not salida:
+                    salida = SalidaTour.objects.create(
+                        tour=tour,
+                        fecha=fecha_obj,
+                        hora=None,
+                        cupo_maximo=16,
+                        cupos_disponibles=16
+                    )
+            else:
+                if not salida_id:
+                    error_msg = "Debes seleccionar una fecha."
+                    if is_ajax:
+                        return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
+
+                salida = get_object_or_404(SalidaTour, id=salida_id, tour=tour)
+                
+                # Validar que la fecha y hora seleccionada no haya pasado al momento de enviar POST
+                if salida.fecha < fecha_hoy or (salida.fecha == fecha_hoy and salida.hora and salida.hora < hora_actual):
+                    error_msg = "Lo sentimos, el horario para este tour ya ha pasado. Por favor selecciona otra fecha u horario."
+                    if is_ajax:
+                        return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
 
             total_personas = adultos + ninos
 
@@ -188,38 +220,103 @@ def tour_detalle(request, pk):
                 messages.error(request, error_msg)
                 return redirect('tour_detalle', pk=pk)
 
-            # Calcular total a pagar (adulto/niño)
-            precio_adulto = tour.precio_adulto_final()
-            precio_nino = tour.precio_nino_final()
-            total_pagar = (adultos * precio_adulto) + (ninos * precio_nino)
+            if es_agencia:
+                if total_personas > 16:
+                    error_msg = "Las agencias solo pueden bloquear un máximo de 16 pasajeros por reserva."
+                    if is_ajax:
+                        return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
 
-            # Crear la reserva con estado PENDIENTE (hasta que pague)
-            reserva = Reserva.objects.create(
-                usuario=request.user if request.user.is_authenticated else None,
-                salida=salida,
-                adultos=adultos,
-                ninos=ninos,
-                total_pagar=total_pagar,
-                nombre=nombre if nombre else (request.user.first_name if request.user.is_authenticated else ""),
-                apellidos="",  # Puedes agregar este campo al formulario si quieres
-                correo=request.user.email if request.user.is_authenticated else "",
-                telefono=telefono,
-                identificacion=identificacion,
-                estado="pendiente"  # IMPORTANTE: Pendiente hasta que pague
-            )
+                # Calcular total a pagar (adulto/niño) referencial
+                precio_adulto = tour.precio_adulto_final()
+                precio_nino = tour.precio_nino_final()
+                total_pagar = (adultos * precio_adulto) + (ninos * precio_nino)
 
-            # NO descontamos cupos aquí, se descontarán después del pago
+                # Calcular fecha límite (15 días a partir de hoy)
+                fecha_limite = timezone.now() + timedelta(days=15)
+                codigo_agencia = request.POST.get("codigo_agencia", "")
+                
+                if not codigo_agencia:
+                    error_msg = "El código de agencia (VOUCHER) es obligatorio."
+                    if is_ajax:
+                        return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
+                    
+                archivo_agencia = request.FILES.get("archivo_agencia")
 
-            # Responder con la URL del checkout
-            if is_ajax:
-                return JsonResponse({
-                    'success': True,
-                    'reserva_id': reserva.id,
-                    'redirect_url': reverse('checkout_reserva', args=[reserva.id])
-                })
+                # Crear reserva bloqueada y descontar cupos
+                with transaction.atomic():
+                    salida = SalidaTour.objects.select_for_update().get(id=salida.id)
+                    if salida.cupos_disponibles < total_personas:
+                         raise ValueError("Cupos no disponibles")
+
+                    reserva = Reserva.objects.create(
+                        usuario=request.user,
+                        salida=salida,
+                        adultos=adultos,
+                        ninos=ninos,
+                        total_pagar=total_pagar,
+                        nombre=nombre if nombre else request.user.first_name,
+                        apellidos="",
+                        correo=request.user.email,
+                        telefono=telefono,
+                        identificacion=identificacion,
+                        estado="bloqueada_por_agencia",
+                        codigo_agencia=codigo_agencia,
+                        archivo_agencia=archivo_agencia,
+                        limite_pago_agencia=fecha_limite
+                    )
+
+                    salida.cupos_disponibles -= total_personas
+                    salida.save(update_fields=["cupos_disponibles"])
+
+                msg = "¡Bloqueo exitoso! Tienes la responsabilidad de confirmar o cancelar esta reserva antes de la fecha límite."
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'reserva_id': reserva.id,
+                        'redirect_url': reverse('mis_reservas') # O una vista de exito
+                    })
+                else:
+                    messages.success(request, msg)
+                    return redirect('mis_reservas')
+
             else:
-                messages.success(request, "Reserva iniciada. Completa el pago para confirmar.")
-                return redirect('checkout_reserva', reserva_id=reserva.id)
+                # Flujo normal de Turista
+                # Calcular total a pagar (adulto/niño)
+                precio_adulto = tour.precio_adulto_final()
+                precio_nino = tour.precio_nino_final()
+                total_pagar = (adultos * precio_adulto) + (ninos * precio_nino)
+
+                # Crear la reserva con estado PENDIENTE (hasta que pague)
+                reserva = Reserva.objects.create(
+                    usuario=request.user if request.user.is_authenticated else None,
+                    salida=salida,
+                    adultos=adultos,
+                    ninos=ninos,
+                    total_pagar=total_pagar,
+                    nombre=nombre if nombre else (request.user.first_name if request.user.is_authenticated else ""),
+                    apellidos="",  # Puedes agregar este campo al formulario si quieres
+                    correo=request.user.email if request.user.is_authenticated else "",
+                    telefono=telefono,
+                    identificacion=identificacion,
+                    estado="pendiente"  # IMPORTANTE: Pendiente hasta que pague
+                )
+
+                # NO descontamos cupos aquí, se descontarán después del pago
+
+                # Responder con la URL del checkout
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'reserva_id': reserva.id,
+                        'redirect_url': reverse('checkout_reserva', args=[reserva.id])
+                    })
+                else:
+                    messages.success(request, "Reserva iniciada. Completa el pago para confirmar.")
+                    return redirect('checkout_reserva', reserva_id=reserva.id)
 
         except Exception as e:
             error_msg = f"Error al procesar la reserva: {str(e)}"
@@ -419,11 +516,75 @@ def cambiar_estado_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
     if request.method == "POST":
         nuevo_estado = request.POST.get("estado")
-        if nuevo_estado in ["pendiente", "confirmada", "cancelada", "pagada"]:
+        if nuevo_estado in ["pendiente", "confirmada", "cancelada", "pagada", "bloqueada_por_agencia"]:
             reserva.estado = nuevo_estado
             reserva.save()
             messages.success(request, f"Reserva #{reserva.id} actualizada correctamente.")
     return redirect("admin_reservas")
+
+@login_required
+@user_passes_test(es_admin)
+def admin_agencias(request):
+    from django.contrib.auth.models import User
+    usuarios = User.objects.filter(perfil__is_agencia=True).select_related('perfil').order_by('-date_joined')
+    return render(request, "core/panel/agencias.html", {"usuarios": usuarios})
+
+@login_required
+@user_passes_test(es_admin)
+@require_POST
+def crear_agencia(request):
+    from django.contrib.auth.models import User
+    from .models import UserProfile
+    import string
+    import random
+
+    username = request.POST.get('username')
+    email = request.POST.get('email')
+    first_name = request.POST.get('nombre', '')
+    
+    if not username or not email:
+        messages.error(request, "El nombre de usuario y el correo son obligatorios.")
+        return redirect('admin_agencias')
+        
+    if User.objects.filter(username=username).exists():
+        messages.error(request, "Ese nombre de usuario ya está en uso.")
+        return redirect('admin_agencias')
+        
+    if User.objects.filter(email=email).exists():
+        messages.error(request, "Ese correo electrónico ya está registrado.")
+        return redirect('admin_agencias')
+
+    password = request.POST.get('password')
+    if not password:
+        characters = string.ascii_letters + string.digits
+        password = ''.join(random.choice(characters) for i in range(10))
+
+    try:
+        user = User.objects.create_user(username=username, email=email, password=password, first_name=first_name)
+        perfil, _ = UserProfile.objects.get_or_create(user=user)
+        perfil.is_agencia = True
+        perfil.save()
+        messages.success(request, f"¡Agencia creada existosamente! 💼 Usuario: {username} | Contraseña: {password}")
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al crear la agencia: {e}")
+        
+    return redirect('admin_agencias')
+
+@login_required
+@user_passes_test(es_admin)
+@require_POST
+def toggle_agencia(request, user_id):
+    from .models import UserProfile
+    from django.contrib.auth.models import User
+    user = get_object_or_404(User, id=user_id)
+    perfil, created = UserProfile.objects.get_or_create(user=user)
+    perfil.is_agencia = not perfil.is_agencia
+    perfil.save()
+    if perfil.is_agencia:
+        messages.success(request, f"{user.username} ha sido convertida en Agencia.")
+    else:
+        messages.warning(request, f"{user.username} perdió sus privilegios de Agencia.")
+    return redirect('admin_agencias')
 
 @login_required
 @user_passes_test(es_admin)

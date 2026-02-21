@@ -17,8 +17,8 @@
                 </p>
             </div>
 
-            <a href="{% url 'panel_admin' %}" 
-               class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 transition-all duration-300 font-bold text-sm shadow-sm">
+            <a href="{% url 'panel_admin' %}"
+                class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 transition-all duration-300 font-bold text-sm shadow-sm">
                 <span class="material-icons text-base">arrow_back</span>
             </a>
         </div>
@@ -37,7 +37,8 @@
         <!-- BUSCADOR SOBRE LA TABLA -->
         <div class="flex justify-end mb-4">
             <div class="relative group w-full md:w-80">
-                <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary">search</span>
+                <span
+                    class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary">search</span>
                 <input type="text" id="reservaSearch" placeholder="Buscar por ref, pasajero o tour..."
                     class="pl-12 pr-6 py-3 bg-white border border-slate-200 rounded-xl w-full shadow-sm focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-slate-700"
                     onkeyup="filterReservas()">
@@ -62,35 +63,66 @@
                         {% for r in reservas %}
                         <tr class="reserva-row hover:bg-slate-50">
                             <td class="px-8 py-6 text-slate-400 font-mono">#{{ r.id|stringformat:"05d" }}</td>
-                            <td class="px-8 py-6 font-bold">{{ r.nombre }} {{ r.apellidos }}</td>
+                            <td class="px-8 py-6 font-bold">
+                                {{ r.nombre }} {{ r.apellidos }}
+                                {% if r.codigo_agencia or r.archivo_agencia %}
+                                <div class="mt-2 text-xs text-blue-600 bg-blue-50 border border-blue-100 p-2 rounded-lg font-normal w-max">
+                                    <div class="flex items-center gap-1 font-bold text-[10px] uppercase tracking-wider mb-1">
+                                        <span class="material-icons border-none text-sm leading-none">business_center</span> Agencia
+                                    </div>
+                                    {% if r.codigo_agencia %}
+                                        <span>Cod: <b>{{ r.codigo_agencia }}</b></span><br>
+                                    {% endif %}
+                                    {% if r.limite_pago_agencia %}
+                                        <span>Límite: <b>{{ r.limite_pago_agencia|date:"d M Y" }}</b></span><br>
+                                    {% endif %}
+                                    {% if r.archivo_agencia %}
+                                        <a href="{{ r.archivo_agencia.url }}" target="_blank" class="underline flex items-center gap-1 mt-1 text-blue-700 hover:text-blue-900 border-none">
+                                            <span class="material-icons border-none text-xs">download</span> Ver Doc Respaldo
+                                        </a>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </td>
                             <td class="px-8 py-6 italic tour-nombre">{{ r.salida.tour.nombre }}</td>
                             <td class="px-8 py-6 font-bold monto-total">${{ r.total_pagar }}</td>
                             <td class="px-8 py-6 text-center">
                                 <span class="estado-label px-3 py-1 rounded-lg text-xs font-bold
-                                    {% if r.estado == "cancelada" %}bg-red-100 text-red-700
-                                    {% elif r.estado == "pagada" or r.tiene_pago %}bg-green-100 text-green-700
-                                    {% else %}bg-yellow-100 text-yellow-700{% endif %}">
-                                    {% if r.estado == "pagada" or r.tiene_pago %}pagada{% else %}{{ r.estado }}{% endif %}
+                                    {% if    r.estado == 'cancelada' %}bg-red-100 text-red-700                                     {% elif r.estado == 'pagada' or r.tiene_pago  %}bg-green-100 text-green-700                                     {% elif r.estado == 'bloqueada_por_agencia'  %}bg-blue-100 text-blue-700                                     {% else  %}bg-yellow-100 text-yellow-700{% endif %}">
+                                    {% if  r.estado == "pagada" or r.tiene_pago %}pagada{% elif r.estado ==                                     "bloqueada_por_agencia"  %}bloqueada agenda{% else %}{{ r.estado }}{% endif %}
                                 </span>
                             </td>
                             <td class="px-8 py-6 text-center">
                                 {% if r.estado == "pagada" or r.tiene_pago %}
                                 <div class="inline-flex items-center gap-2">
-                                    <a href="{% url 'ver_ticket_pdf' r.id %}" target="_blank" class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs">Ver PDF</a>
+                                    <a href="{% url 'ver_ticket_pdf' r.id %}" target="_blank"
+                                        class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs">Ver PDF</a>
                                     <form method="post" action="{% url 'eliminar_reserva' r.id %}" class="inline">
                                         {% csrf_token %}
-                                        <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">Eliminar</button>
+                                        <button type="submit"
+                                            class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs">Eliminar</button>
                                     </form>
                                 </div>
                                 {% else %}
-                                <form method="post" action="{% url 'cambiar_estado_reserva' r.id %}">
+                                <form method="post" action="{% url 'cambiar_estado_reserva' r.id %}"
+                                    class="flex flex-col gap-2">
                                     {% csrf_token %}
-                                    <select name="estado" class="border rounded px-2 py-1 text-xs">
-                                        <option value="pendiente" {% if r.estado == "pendiente" %}selected{% endif %}>Pendiente</option>
-                                        <option value="pagada" {% if r.estado == "pagada" %}selected{% endif %}>Pagada</option>
-                                        <option value="cancelada" {% if r.estado == "cancelada" %}selected{% endif %}>Cancelada</option>
-                                    </select>
-                                    <button type="submit" class="bg-slate-900 text-white px-2 py-1 rounded text-xs ml-2">Guardar</button>
+                                    <div class="flex items-center">
+                                        <select name="estado"
+                                            class="border rounded px-2 py-1 text-xs bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary w-full">
+                                            <option value="pendiente" {% if r.estado == "pendiente" %}selected{% endif %}>
+                                                Pendiente</option>
+                                            <option value="bloqueada_por_agencia" {% if r.estado == "bloqueada_por_agencia" %}selected{% endif %}>Bloqueada
+                                                Agencia</option>
+                                            <option value="pagada" {% if r.estado == "pagada" %}selected{% endif %}>Pagada
+                                            </option>
+                                            <option value="cancelada" {% if r.estado == "cancelada" %}selected{% endif %}>
+                                                Cancelada</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit"
+                                        class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-full">Guardar
+                                        Cambios</button>
                                 </form>
                                 {% endif %}
                             </td>
@@ -105,31 +137,31 @@
 </div>
 
 <script>
-function filterReservas() {
-    const filter = document.getElementById('reservaSearch').value.toLowerCase();
-    const rows = document.getElementsByClassName('reserva-row');
-    for (let row of rows) {
-        row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const filas = document.querySelectorAll('.reserva-row');
-    let granTotal = 0;
-
-    filas.forEach(fila => {
-        const montoTexto = fila.querySelector('.monto-total').innerText.replace('$', '').replace(',', '').trim();
-        const monto = parseFloat(montoTexto);
-        const estado = fila.querySelector('.estado-label').innerText.toLowerCase();
-
-        if (estado.includes('pagada')) {
-            granTotal += monto;
+    function filterReservas() {
+        const filter = document.getElementById('reservaSearch').value.toLowerCase();
+        const rows = document.getElementsByClassName('reserva-row');
+        for (let row of rows) {
+            row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
         }
-    });
+    }
 
-    document.getElementById('total-ganancias-display').innerText =
-        `$${granTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        const filas = document.querySelectorAll('.reserva-row');
+        let granTotal = 0;
+
+        filas.forEach(fila => {
+            const montoTexto = fila.querySelector('.monto-total').innerText.replace('$', '').replace(',', '').trim();
+            const monto = parseFloat(montoTexto);
+            const estado = fila.querySelector('.estado-label').innerText.toLowerCase();
+
+            if (estado.includes('pagada')) {
+                granTotal += monto;
+            }
+        });
+
+        document.getElementById('total-ganancias-display').innerText =
+            `$${granTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    });
 </script>
 
 {% endblock %}

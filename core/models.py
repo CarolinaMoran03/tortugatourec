@@ -65,6 +65,7 @@ class Reserva(models.Model):
         ("confirmada", "Confirmada"),
         ("pagada", "Pagada"),
         ("cancelada", "Cancelada"),
+        ("bloqueada_por_agencia", "Bloqueada por Agencia"),
     )
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -72,8 +73,13 @@ class Reserva(models.Model):
     adultos = models.PositiveIntegerField()
     ninos = models.PositiveIntegerField()
     total_pagar = models.DecimalField(max_digits=10, decimal_places=2)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
+    estado = models.CharField(max_length=30, choices=ESTADOS, default="pendiente")
     fecha_reserva = models.DateTimeField(default=timezone.now)
+    
+    # Nuevos campos para tracking de agencias
+    archivo_agencia = models.FileField(upload_to='agencia_vouchers/', null=True, blank=True)
+    codigo_agencia = models.CharField(max_length=50, null=True, blank=True)
+    limite_pago_agencia = models.DateTimeField(null=True, blank=True)
 
     # Datos del cliente
     nombre = models.CharField(max_length=100)
@@ -145,6 +151,7 @@ class UserProfile(models.Model):
     foto = models.ImageField(upload_to="perfiles/", blank=True, null=True, help_text="Foto de perfil")
     telefono = models.CharField(max_length=20, blank=True, null=True)
     biografia = models.TextField(blank=True, null=True)
+    is_agencia = models.BooleanField(default=False, verbose_name="Es agencia de tours", help_text="Si se activa, el usuario podrá bloquear reservas por 15 días")
 
     def __str__(self):
         return f"Perfil de {self.user.username}"

@@ -142,7 +142,7 @@
             <div id="reservaContainer"
                 class="sticky top-28 bg-white border border-slate-200 rounded-[3rem] p-8 shadow-2xl transition-all duration-500">
 
-                <form id="reservaForm" method="post">
+                <form id="reservaForm" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
 
                     <div id="paso1" class="space-y-8">
@@ -155,6 +155,11 @@
                             <label class="block text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">1.
                                 Fecha y Horario</label>
                             <div class="relative">
+                                {% if user.perfil.is_agencia %}
+                                <input type="date" name="fecha_agencia" id="fechaAgencia" min="{% now 'Y-m-d' %}"
+                                    class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all font-sans"
+                                    required onchange="recalcular()">
+                                {% else %}
                                 <select name="salida" id="selectSalida"
                                     class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-700 appearance-none outline-none focus:ring-4 focus:ring-primary/10 transition-all"
                                     required onchange="recalcular()">
@@ -170,6 +175,7 @@
                                 </select>
                                 <span
                                     class="material-icons absolute right-4 top-4 text-slate-400 pointer-events-none">calendar_month</span>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -292,6 +298,32 @@
                             <input type="text" name="identificacion" placeholder="Cédula o Pasaporte"
                                 class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 outline-none focus:ring-4 focus:ring-primary/10 font-bold"
                                 required>
+
+                            {% if user.perfil.is_agencia %}
+                            <div class="mt-4 p-4 border border-blue-100 bg-blue-50/50 rounded-2xl space-y-4">
+                                <h4
+                                    class="text-xs font-black text-blue-800 uppercase tracking-widest flex items-center gap-2">
+                                    <span class="material-icons border-none text-sm">business_center</span>
+                                    Datos de Agencia
+                                </h4>
+
+                                <input type="text" name="codigo_agencia" placeholder="Código VOUCHER (Obligatorio)"
+                                    class="w-full bg-white p-4 rounded-xl border border-blue-100 outline-none focus:ring-4 focus:ring-blue-500/10 font-bold text-sm text-blue-900 placeholder-blue-300"
+                                    required>
+
+                                <div class="flex flex-col gap-2 relative">
+                                    <label class="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Subir
+                                        documento de respaldo (Opcional)</label>
+                                    <input type="file" name="archivo_agencia" accept=".pdf,.png,.jpg,.jpeg" class="block w-full text-sm text-slate-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-xs file:font-semibold
+                                        file:bg-blue-50 file:text-blue-700
+                                        hover:file:bg-blue-100 transition-all cursor-pointer border border-blue-100 bg-white rounded-xl p-2
+                                        ">
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <button type="submit" id="btnConfirmar"
@@ -395,12 +427,27 @@
         if (nuevo < 0) nuevo = 0;
 
         const select = document.getElementById('selectSalida');
-        if (select.value && delta > 0) {
-            const cuposMax = parseInt(select.options[select.selectedIndex].getAttribute('data-cupos'));
+        const dateInput = document.getElementById('fechaAgencia');
+
+        if (delta > 0) {
             const totalActual = (parseInt(document.getElementById('adultos').value) || 0) + (parseInt(document.getElementById('ninos').value) || 0);
-            if (totalActual >= cuposMax) {
-                mostrarError("No hay más cupos disponibles para esta fecha.");
-                return;
+
+            if (dateInput) {
+                // If it's an agency using the date input, limit is 16
+                if (totalActual >= 16) {
+                    mostrarError("Las agencias solo pueden bloquear un máximo de 16 pasajeros por reserva.");
+                    return;
+                }
+            } else if (select && select.value) {
+                // Regular user using the dropdown
+                const selectedOption = select.options[select.selectedIndex];
+                if (selectedOption && selectedOption.hasAttribute('data-cupos')) {
+                    const cuposMax = parseInt(selectedOption.getAttribute('data-cupos'));
+                    if (totalActual >= cuposMax) {
+                        mostrarError("No hay más cupos disponibles para esta fecha.");
+                        return;
+                    }
+                }
             }
         }
 
@@ -427,9 +474,11 @@
 
     function validarYPasar() {
         const select = document.getElementById('selectSalida');
+        const dateInput = document.getElementById('fechaAgencia');
+        const hasDate = (select && select.value) || (dateInput && dateInput.value);
         const totalGente = (parseInt(document.getElementById('adultos').value) || 0) + (parseInt(document.getElementById('ninos').value) || 0);
 
-        if (!select.value) {
+        if (!hasDate) {
             mostrarError("Por favor, selecciona una fecha.");
             return;
         }
