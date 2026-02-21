@@ -950,9 +950,13 @@ def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
         if reserva.estado == "cancelada":
             raise ValueError("La reserva esta cancelada.")
 
+        estado_anterior = reserva.estado
+
         personas = reserva.adultos + reserva.ninos
-        if salida.cupos_disponibles < personas:
-            raise ValueError("No hay cupos suficientes al confirmar el pago.")
+        # IMPORTANTE: No restar cupos si ya se restaron cuando la agencia bloqueó
+        if estado_anterior != "bloqueada_por_agencia":
+            if salida.cupos_disponibles < personas:
+                raise ValueError("No hay cupos suficientes al confirmar el pago.")
 
         reserva.estado = "pagada"
         if customer_email:
@@ -961,8 +965,9 @@ def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
         else:
             reserva.save(update_fields=["estado"])
 
-        salida.cupos_disponibles -= personas
-        salida.save(update_fields=["cupos_disponibles"])
+        if estado_anterior != "bloqueada_por_agencia":
+            salida.cupos_disponibles -= personas
+            salida.save(update_fields=["cupos_disponibles"])
 
         if pago:
             pago.estado = "paid"
@@ -984,6 +989,21 @@ def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
             )
 
     _send_ticket_email(reserva)
+    
+    # Enviar correo adicional confirmando que el valor bloqueado fue cancelado si era agencia
+    if estado_anterior == "bloqueada_por_agencia" and reserva.usuario and reserva.usuario.email:
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        subject = f"Confirmación de Pago a Agencia - Reserva #{reserva.id:06d}"
+        msg_plain = f"Gracias por su pago. La reserva del código {reserva.codigo_agencia} ha sido procesada."
+        send_mail(
+            subject=subject,
+            message=msg_plain,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[reserva.usuario.email],
+            fail_silently=True
+        )
+
     return reserva, True
 
 
@@ -1083,7 +1103,7 @@ def checkout_pago(request, reserva_id):
 @require_POST
 def create_lemonsqueezy_checkout(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
-    if reserva.estado != "pendiente":
+    if reserva.estado not in ["pendiente", "bloqueada_por_agencia"]:
         messages.warning(request, "Esta reserva ya no esta pendiente de pago.")
         return redirect("tours")
 
@@ -1178,8 +1198,8 @@ def create_lemonsqueezy_checkout(request, reserva_id):
 @require_POST
 def create_paypal_order(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
-    if reserva.estado != "pendiente":
-        return JsonResponse({"error": "La reserva ya no esta pendiente."}, status=400)
+    if reserva.estado not in ["pendiente", "bloqueada_por_agencia"]:
+        return JsonResponse({"error": "La reserva ya no esta pendiente de pago."}, status=400)
 
     currency = _currency()
     token = _paypal_access_token()
