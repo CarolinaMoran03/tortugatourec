@@ -4,7 +4,7 @@
 {% block content %}
 <div class="bg-slate-50 min-h-screen py-12">
     <div class="max-w-4xl mx-auto px-4">
-        
+
         <nav class="flex mb-8" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3 text-sm text-slate-500 font-medium">
                 <li class="inline-flex items-center">
@@ -37,70 +37,93 @@
                 {% csrf_token %}
 
                 <div>
-                    <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Tour a Programar</label>
+                    <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Tour a
+                        Programar</label>
                     <div class="relative">
                         <span class="material-icons absolute left-3 top-3 text-slate-400">map</span>
-                        <select name="tour" id="tourSelect" required class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition font-medium text-slate-700">
+                        <select name="tour" id="tourSelect" required
+                            class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition font-medium text-slate-700">
                             <option value="" disabled selected>Elige un tour de la lista...</option>
                             {% for t in tours %}
-                                <option value="{{ t.id }}" data-cupo="{{ t.cupo_maximo }}">{{ t.nombre }} — {{ t.destino.nombre }}</option>
+                            <option value="{{ t.id }}" data-cupo="{{ t.cupo_maximo }}"
+                                data-duracion="{{ t.duracion|default:'' }}">{{ t.nombre }} — {{ t.destino.nombre }}
+                            </option>
                             {% endfor %}
                         </select>
-                        <span class="material-icons absolute right-3 top-3 text-slate-300 pointer-events-none">expand_more</span>
+                        <span
+                            class="material-icons absolute right-3 top-3 text-slate-300 pointer-events-none">expand_more</span>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Fecha de Salida</label>
+                        <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Fecha
+                            de Salida</label>
                         <div class="relative">
                             <span class="material-icons absolute left-3 top-3 text-slate-400">calendar_today</span>
-                            <input type="date" name="fecha" required 
-                                   class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-700">
+                            <input type="date" name="fecha" required
+                                class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-700">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Hora de Inicio</label>
+                        <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">Hora de
+                            Inicio</label>
                         <div class="relative">
                             <span class="material-icons absolute left-3 top-3 text-slate-400">schedule</span>
-                            <input type="time" name="hora" required 
-                                   class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-700">
+                            <input type="time" name="hora" required
+                                class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-700">
                         </div>
                     </div>
 
                     <div id="cupoContainer">
                         <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">
                             Cupo de Personas
-                            <span class="text-primary ml-1" id="cupoSourceInfo" title="Este valor se cargó automáticamente desde la configuración del tour">
+                            <span class="text-primary ml-1" id="cupoSourceInfo"
+                                title="Este valor se cargó automáticamente desde la configuración del tour">
                                 <span class="material-icons text-xs align-middle">info_outline</span>
                             </span>
                         </label>
                         <div class="relative">
                             <span class="material-icons absolute left-3 top-3 text-slate-400">groups</span>
-                            <input type="number" id="cupoMaximo" name="cupo_maximo" placeholder="Ej: 15" required min="1"
-                                   class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-900 font-bold">
+                            <input type="number" id="cupoMaximo" name="cupo_maximo" placeholder="Ej: 16" required
+                                min="1"
+                                class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-900 font-bold">
+                        </div>
+                    </div>
+
+                    <div id="duracionContainer">
+                        <label class="block text-[11px] uppercase tracking-wider font-black text-slate-400 mb-2">
+                            Duración Estimada
+                        </label>
+                        <div class="relative">
+                            <span class="material-icons absolute left-3 top-3 text-slate-400">timer</span>
+                            <input type="text" id="duracionTour" name="duracion" placeholder="Ej: Medio día"
+                                class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none transition text-slate-900 font-bold">
                         </div>
                     </div>
                 </div>
 
                 <div class="pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-4">
-                    <button type="submit" class="flex-[2] bg-primary hover:bg-primary-dark text-white py-4 rounded-2xl font-black transition shadow-lg shadow-primary/30 flex items-center justify-center gap-2">
+                    <button type="submit"
+                        class="flex-[2] bg-primary hover:bg-primary-dark text-white py-4 rounded-2xl font-black transition shadow-lg shadow-primary/30 flex items-center justify-center gap-2">
                         <span class="material-icons">save</span> Publicar Salida
                     </button>
-                    <a href="{% url 'admin_salidas' %}" class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition text-center flex items-center justify-center">
+                    <a href="{% url 'admin_salidas' %}"
+                        class="flex-1 px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition text-center flex items-center justify-center">
                         <span class="material-icons mr-2">close</span> Descartar
                     </a>
                 </div>
             </form>
         </div>
-        
+
         <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5 mt-8">
             <div class="flex items-start gap-3">
                 <span class="material-icons text-blue-500">info</span>
                 <div>
                     <p class="text-blue-700 text-sm">
-                        El <strong>cupo máximo</strong> se carga automáticamente desde la configuración del tour seleccionado. 
+                        El <strong>cupo máximo</strong> se carga automáticamente desde la configuración del tour
+                        seleccionado.
                         Puedes modificarlo según las necesidades específicas de esta salida.
                     </p>
                 </div>
@@ -111,27 +134,38 @@
 
 <script>
     // Script para cargar automáticamente el cupo máximo desde el tour seleccionado
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const tourSelect = document.getElementById('tourSelect');
         const cupoInput = document.getElementById('cupoMaximo');
         const cupoContainer = document.getElementById('cupoContainer');
         const cupoInfo = document.getElementById('cupoSourceInfo');
-        
+
         // Función para actualizar el cupo máximo cuando se selecciona un tour
-        tourSelect.addEventListener('change', function() {
+        tourSelect.addEventListener('change', function () {
             const selectedOption = this.options[this.selectedIndex];
             const tourCupo = selectedOption.getAttribute('data-cupo');
-            
+            const tourDuracion = selectedOption.getAttribute('data-duracion');
+            const duracionInput = document.getElementById('duracionTour');
+            const duracionContainer = document.getElementById('duracionContainer');
+
+            if (tourDuracion) {
+                duracionInput.value = tourDuracion;
+                duracionContainer.classList.add('bg-primary/5', 'rounded-xl', 'p-3');
+                setTimeout(() => { duracionContainer.classList.remove('bg-primary/5', 'p-3'); }, 2000);
+            } else {
+                duracionInput.value = '';
+            }
+
             if (tourCupo) {
                 // Establece el valor del cupo máximo desde el tour
                 cupoInput.value = tourCupo;
-                
+
                 // Añade un efecto visual para indicar que el valor se cargó automáticamente
                 cupoContainer.classList.add('bg-primary/5', 'rounded-xl', 'p-3');
                 setTimeout(() => {
                     cupoContainer.classList.remove('bg-primary/5', 'p-3');
                 }, 2000);
-                
+
                 // Mostrar el tooltip/indicador
                 cupoInfo.classList.remove('hidden');
             } else {
@@ -139,14 +173,14 @@
                 cupoInfo.classList.add('hidden');
             }
         });
-        
+
         // Validación del formulario
-        document.getElementById('salidaForm').addEventListener('submit', function(event) {
+        document.getElementById('salidaForm').addEventListener('submit', function (event) {
             if (!tourSelect.value) {
                 event.preventDefault();
                 alert('Por favor, selecciona un tour antes de continuar.');
             }
-            
+
             const cupoValue = parseInt(cupoInput.value);
             if (isNaN(cupoValue) || cupoValue < 1) {
                 event.preventDefault();
@@ -159,27 +193,34 @@
 <style>
     /* Animación sutil cuando se autocompleta el cupo */
     @keyframes highlightField {
-        0% { background-color: rgba(var(--color-primary), 0.1); }
-        100% { background-color: transparent; }
+        0% {
+            background-color: rgba(var(--color-primary), 0.1);
+        }
+
+        100% {
+            background-color: transparent;
+        }
     }
-    
+
     /* Tooltip styling */
     [title] {
         position: relative;
         cursor: help;
     }
-    
+
     /* Transiciones suaves */
     #cupoContainer {
         transition: all 0.3s ease;
     }
-    
+
     /* Mejora el contraste de los inputs y selects */
-    select, input {
+    select,
+    input {
         font-size: 0.95rem;
     }
-    
-    select:focus, input:focus {
+
+    select:focus,
+    input:focus {
         box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2);
     }
 </style>

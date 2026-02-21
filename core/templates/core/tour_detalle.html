@@ -41,12 +41,13 @@
                 <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <span class="material-icons text-primary mb-3">timer</span>
                     <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Duración</p>
-                    <p class="font-bold text-slate-800 italic">Full Day</p>
+                    <p id="tile-duracion" class="font-bold text-slate-800 italic">{{ tour.duracion|default:"Full Day" }}
+                    </p>
                 </div>
                 <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <span class="material-icons text-primary mb-3">groups</span>
                     <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Capacidad</p>
-                    <p class="font-bold text-slate-800">{{ tour.cupo_maximo }} Pers.</p>
+                    <p id="tile-capacidad" class="font-bold text-slate-800">{{ tour.cupo_maximo }} Pers.</p>
                 </div>
                 <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <span class="material-icons text-primary mb-3">g_translate</span>
@@ -165,7 +166,9 @@
                                     required onchange="recalcular()">
                                     <option value="" disabled selected>Seleccionar fecha...</option>
                                     {% for s in salidas %}
-                                    <option value="{{ s.id }}" data-cupos="{{ s.cupos_disponibles }}" {% if
+                                    <option value="{{ s.id }}" data-cupos="{{ s.cupos_disponibles }}"
+                                        data-cupo-maximo="{{ s.cupo_maximo }}"
+                                        data-dur="{{ s.duracion|default:tour.duracion|default:'Full Day' }}" {% if
                                         salida_seleccionada and salida_seleccionada==s.id|stringformat:'s' %}selected{%
                                         endif %}>
                                         {{ s.fecha|date:"d M" }} — {{ s.hora|time:"H:i" }} ({{ s.cupos_disponibles }}
@@ -463,7 +466,20 @@
 
         document.getElementById('totalPagar').innerText = totalDinero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         if (totalPersonas > 0) document.getElementById('error-msg').classList.add('hidden');
+
+        // Modificar cuadros de Duración y Capacidad dinámicamente según la salida elegida
+        const select = document.getElementById('selectSalida');
+        if (select && select.selectedIndex > 0) {
+            const selectedOpt = select.options[select.selectedIndex];
+            const maxCap = selectedOpt.getAttribute('data-cupo-maximo');
+            const dur = selectedOpt.getAttribute('data-dur');
+            if (maxCap) document.getElementById('tile-capacidad').innerText = maxCap + ' Pers.';
+            if (dur) document.getElementById('tile-duracion').innerText = dur;
+        }
     }
+
+    // Ejecutar recalcular al inicio para pintar las duraciones correctas si ya hay una salida seleccionada
+    document.addEventListener("DOMContentLoaded", recalcular);
 
     function mostrarError(msg) {
         const error = document.getElementById('error-msg');

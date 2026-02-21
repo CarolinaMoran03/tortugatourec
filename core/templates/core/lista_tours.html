@@ -30,7 +30,8 @@
                 <div
                     class="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-2xl shadow-sm border border-white">
                     <!-- prettier-ignore -->
-                    <span class="text-[10px] font-black text-primary uppercase tracking-widest">{{ tour.destino.nombre }}</span>
+                    <span class="text-[10px] font-black text-primary uppercase tracking-widest">{{ tour.destino.nombre
+                        }}</span>
                 </div>
             </div>
 
@@ -38,17 +39,26 @@
                 <div>
                     <div class="flex justify-between items-start mb-6">
                         <!-- prettier-ignore -->
-                        <h3 class="text-3xl font-black text-slate-900 leading-none tracking-tighter uppercase">{{ tour.nombre }}</h3>
+                        <h3 class="text-3xl font-black text-slate-900 leading-none tracking-tighter uppercase">{{
+                            tour.nombre }}</h3>
                         <div class="text-right">
                             <!-- prettier-ignore -->
-                            <span class="text-3xl font-black text-primary">{{ currency_code }} {{ tour.precio_adulto_display|floatformat:2 }}</span>
+                            <span class="text-3xl font-black text-primary">{{ currency_code }} {{
+                                tour.precio_adulto_display|floatformat:2 }}</span>
                             <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">Adulto</p>
                             <!-- prettier-ignore -->
-                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">NiÃ±o: {{ currency_code }} {{ tour.precio_nino_display|floatformat:2 }}</p>
+                            <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">NiÃ±o: {{
+                                currency_code }} {{ tour.precio_nino_display|floatformat:2 }}</p>
                         </div>
                     </div>
 
-                    <p class="text-slate-500 text-sm mb-8 line-clamp-2 font-medium">{{ tour.descripcion }}</p>
+                    <p class="text-slate-500 text-sm mb-4 line-clamp-2 font-medium">{{ tour.descripcion }}</p>
+
+                    <div
+                        class="flex items-center gap-2 mb-8 text-xs font-bold text-slate-500 bg-slate-50 p-2 rounded-lg w-fit">
+                        <span class="material-icons text-sm text-primary">timer</span>
+                        {{ tour.duracion|default:"Medio día" }}
+                    </div>
 
                     <div class="space-y-4">
                         <p
@@ -70,11 +80,14 @@
                                             group-hover:border-primary group-hover:bg-white peer-checked:group-hover:bg-slate-900">
                                     <div class="flex flex-col items-center">
                                         <!-- prettier-ignore -->
-                                        <span class="text-xs font-black uppercase tracking-tighter">{{ s.fecha|date:"d M" }}</span>
+                                        <span class="text-xs font-black uppercase tracking-tighter">{{ s.fecha|date:"d
+                                            M" }}</span>
                                         <!-- prettier-ignore -->
-                                        <span class="text-lg font-black leading-none my-1">{{ s.hora|time:"H:i" }}</span>
+                                        <span class="text-lg font-black leading-none my-1">{{ s.hora|time:"H:i"
+                                            }}</span>
                                         <!-- prettier-ignore -->
-                                        <span class="text-[9px] opacity-60 font-bold uppercase">{{ s.cupos_disponibles }} cupos</span>
+                                        <span class="text-[9px] opacity-60 font-bold uppercase">{{ s.cupos_disponibles
+                                            }} cupos</span>
                                     </div>
                                 </div>
                             </label>

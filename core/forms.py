@@ -25,16 +25,19 @@ from .models import Destino, Tour
 class TourForm(forms.ModelForm):
     class Meta:
         model = Tour
-        fields = ['nombre', 'destino', 'descripcion', 'precio', 'precio_adulto', 'precio_nino', 'lemonsqueezy_variant_id', 'cupo_maximo']
+        fields = ['nombre', 'destino', 'descripcion', 'duracion', 'precio', 'precio_adulto', 'precio_nino', 'lemonsqueezy_variant_id', 'cupo_maximo', 'hora_turno_1', 'hora_turno_2']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'placeholder': 'Nombre del Tour'}),
             'destino': forms.Select(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary'}),
             'descripcion': forms.Textarea(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'rows': 3}),
+            'duracion': forms.TextInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'placeholder': 'Ej. Medio día (4 horas)'}),
             'precio': forms.NumberInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'step': '0.01'}),
             'precio_adulto': forms.NumberInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'step': '0.01'}),
             'precio_nino': forms.NumberInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'step': '0.01'}),
             'lemonsqueezy_variant_id': forms.TextInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'placeholder': 'Ej. 987654'}),
             'cupo_maximo': forms.NumberInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary'}),
+            'hora_turno_1': forms.TimeInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'type': 'time'}),
+            'hora_turno_2': forms.TimeInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'type': 'time'}),
         }
 
 from django import forms

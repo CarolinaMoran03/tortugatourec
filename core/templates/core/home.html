@@ -145,6 +145,11 @@
         <p class="text-slate-600 dark:text-slate-400 text-sm mb-4">
           {{ tour.descripcion|truncatechars:100 }}
         </p>
+        <div
+          class="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg w-fit">
+          <span class="material-icons text-sm text-primary">timer</span>
+          {{ tour.duracion|default:"Medio día" }}
+        </div>
         <div class="flex justify-between items-center">
           <span class="font-bold text-primary">${{ tour.precio }}</span>
           <a href="{% url 'tour_detalle' tour.id %}" class="text-sm font-semibold text-primary hover:underline">

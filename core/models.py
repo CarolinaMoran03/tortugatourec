@@ -29,8 +29,13 @@ class Tour(models.Model):
     precio_nino = models.DecimalField(max_digits=8, decimal_places=2, default=0, blank=True)
     lemonsqueezy_variant_id = models.CharField(max_length=50, blank=True, default="")
     # Nota: Los campos cupo_maximo y disponibles aquí suelen ser una referencia general
-    cupo_maximo = models.PositiveIntegerField(default=15)
-    cupos_disponibles = models.PositiveIntegerField(default=15)
+    cupo_maximo = models.PositiveIntegerField(default=16)
+    cupos_disponibles = models.PositiveIntegerField(default=16)
+    duracion = models.CharField(max_length=100, blank=True, null=True, verbose_name="Duración del tour", help_text="Ej: 4 horas, Medio día, etc.")
+    
+    # Horarios automáticos cada día
+    hora_turno_1 = models.TimeField(null=True, blank=True, verbose_name="Hora Turno 1")
+    hora_turno_2 = models.TimeField(null=True, blank=True, verbose_name="Hora Turno 2")
 
     def __str__(self):
         return f"{self.nombre} - {self.destino.nombre}"
@@ -46,8 +51,9 @@ class SalidaTour(models.Model):
     fecha = models.DateField()
     # --- CAMBIO: Se agrega el horario ---
     hora = models.TimeField(null=True, blank=True) 
-    cupo_maximo = models.PositiveIntegerField()
-    cupos_disponibles = models.PositiveIntegerField()
+    cupo_maximo = models.PositiveIntegerField(default=16)
+    cupos_disponibles = models.PositiveIntegerField(default=16)
+    duracion = models.CharField(max_length=100, blank=True, null=True, verbose_name="Duración", help_text="Ej: Medio día (4 horas)")
     creado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="salidas_creadas")
 
     def __str__(self):

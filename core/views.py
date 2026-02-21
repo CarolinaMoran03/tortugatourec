@@ -67,6 +67,41 @@ def tours(request):
     }
     return render(request, "core/tours.html", context)
 
+def _auto_generar_salidas_tour(tour, max_dias=30):
+    if not (tour.hora_turno_1 or tour.hora_turno_2):
+        return
+        
+    ahora = timezone.now()
+    fecha_hoy = ahora.date()
+    
+    salidas_existentes = SalidaTour.objects.filter(tour=tour, fecha__gte=fecha_hoy)
+    existentes = {}
+    for s in salidas_existentes:
+        if s.fecha not in existentes:
+            existentes[s.fecha] = set()
+        existentes[s.fecha].add(s.hora)
+        
+    nuevas_salidas = []
+    for d in range(max_dias):
+        fecha_iter = fecha_hoy + timedelta(days=d)
+        
+        if tour.hora_turno_1 and tour.hora_turno_1 not in existentes.get(fecha_iter, set()):
+            nuevas_salidas.append(SalidaTour(
+                tour=tour, fecha=fecha_iter, hora=tour.hora_turno_1,
+                cupo_maximo=tour.cupo_maximo, cupos_disponibles=tour.cupo_maximo,
+                duracion=tour.duracion
+            ))
+            
+        if tour.hora_turno_2 and tour.hora_turno_2 not in existentes.get(fecha_iter, set()):
+            nuevas_salidas.append(SalidaTour(
+                tour=tour, fecha=fecha_iter, hora=tour.hora_turno_2,
+                cupo_maximo=tour.cupo_maximo, cupos_disponibles=tour.cupo_maximo,
+                duracion=tour.duracion
+            ))
+            
+    if nuevas_salidas:
+        SalidaTour.objects.bulk_create(nuevas_salidas)
+
 def lista_tours(request):
     destino_id = request.GET.get("destino")
     fecha = request.GET.get("fecha")
@@ -74,6 +109,11 @@ def lista_tours(request):
 
     if not (destino_id and fecha and personas):
         return render(request, "core/lista_tours.html", {"tours_con_salidas": {}})
+        
+    # Auto generar salidas para este destino antes de filtrar
+    tours_destino = Tour.objects.filter(destino_id=destino_id)
+    for t in tours_destino:
+        _auto_generar_salidas_tour(t)
 
     salidas_brutas = SalidaTour.objects.filter(
         tour__destino_id=destino_id,
@@ -119,6 +159,10 @@ def lista_tours(request):
 
 def tour_detalle(request, pk):
     tour = get_object_or_404(Tour, pk=pk)
+    
+    # Auto generar salidas para los proximos dias
+    _auto_generar_salidas_tour(tour)
+    
     # Filtrar solo salidas futuras con cupos disponibles (y que no haya pasado la hora si es hoy)
     ahora = timezone.now()
     fecha_hoy = ahora.date()
@@ -627,7 +671,9 @@ def editar_salida(request, salida_id):
         salida.cupo_maximo = int(request.POST.get("cupo_maximo"))
         salida.cupos_disponibles = int(request.POST.get("cupos_disponibles"))
         salida.fecha = request.POST.get("fecha")
-        salida.hora = request.POST.get("hora")
+        hora = request.POST.get("hora")
+        salida.hora = hora if hora else None
+        salida.duracion = request.POST.get("duracion") or salida.tour.duracion
         salida.save()
         messages.success(request, f"La salida del {salida.fecha} ha sido actualizada.")
         return redirect("admin_salidas")
@@ -641,8 +687,10 @@ def crear_salida(request):
     if request.method == "POST":
         tour_id = request.POST.get("tour")
         fecha = request.POST.get("fecha")
-        hora = request.POST.get("hora")
+        hora_post = request.POST.get("hora")
+        hora = hora_post if hora_post else None
         cupo_maximo = int(request.POST.get("cupo_maximo"))
+        duracion = request.POST.get("duracion")
         
         tour = get_object_or_404(Tour, id=tour_id)
         
@@ -650,6 +698,7 @@ def crear_salida(request):
             tour=tour,
             fecha=fecha,
             hora=hora,
+            duracion=duracion or tour.duracion,
             cupo_maximo=cupo_maximo,
             cupos_disponibles=cupo_maximo,
             creado_por=request.user
