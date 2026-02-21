@@ -1097,8 +1097,40 @@ def checkout_pago(request, reserva_id):
         "paypal_client_id": getattr(settings, "PAYPAL_CLIENT_ID", ""),
         "lemonsqueezy_enabled": bool(getattr(settings, "LEMONSQUEEZY_API_KEY", "")),
         "paypal_enabled": bool(getattr(settings, "PAYPAL_CLIENT_ID", "")),
+        "is_secretaria_checkout": es_secretaria(request.user),
     }
     return render(request, "core/checkout.html", context)
+
+
+@require_POST
+@login_required
+@user_passes_test(lambda u: u.is_authenticated and u.groups.filter(name="secretaria").exists())
+def confirmar_pago_efectivo(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+
+    if reserva.estado == "pagada":
+        messages.info(request, "La reserva ya estaba pagada.")
+        return redirect("ticket_reserva", reserva_id=reserva.id)
+
+    if reserva.estado not in ["pendiente", "bloqueada_por_agencia"]:
+        messages.error(request, "La reserva no esta disponible para cobrar en efectivo.")
+        return redirect("checkout_reserva", reserva_id=reserva.id)
+
+    payload = {
+        "method": "cash",
+        "confirmed_by": request.user.username,
+        "confirmed_by_user_id": request.user.id,
+        "source": "secretaria_checkout",
+    }
+    external_id = f"cash-{reserva.id}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+    try:
+        _mark_reserva_paid(reserva.id, "cash", external_id=external_id, payload=payload)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("checkout_reserva", reserva_id=reserva.id)
+
+    messages.success(request, f"Pago en efectivo registrado para la reserva #{reserva.id:06d}.")
+    return redirect("ticket_reserva", reserva_id=reserva.id)
 
 
 @require_POST
