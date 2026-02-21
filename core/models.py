@@ -183,3 +183,93 @@ class Galeria(models.Model):
 
     def __str__(self):
         return f"Foto de {self.tour.nombre if self.tour else 'Galería'} - {self.fecha_agregada.strftime('%Y-%m-%d')}"
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        try:
+            old_inst = Galeria.objects.get(pk=self.pk) if not is_new else None
+        except Galeria.DoesNotExist:
+            old_inst = None
+
+        super().save(*args, **kwargs)
+
+        if self.imagen:
+            # Solo si se acaba de crear el registro, o si cambió la imagen frente al anterior
+            if is_new or (old_inst and old_inst.imagen != self.imagen):
+                self._aplicar_marca_agua()
+
+    def _aplicar_marca_agua(self):
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            import os
+
+            if not self.imagen or not getattr(self.imagen, 'path', None):
+                return
+            
+            filepath = self.imagen.path
+            if not os.path.exists(filepath):
+                return
+                
+            img = Image.open(filepath)
+            original_mode = img.mode
+            img = img.convert('RGBA')
+
+            txt = Image.new('RGBA', img.size, (255, 255, 255, 0))
+            draw = ImageDraw.Draw(txt)
+            
+            text = "TortugaTour"
+            width, height = img.size
+            fontsize = max(int(width / 20), 12)  # Letra pequeña (1/20 del ancho)
+
+            try:
+                import platform
+                if platform.system() == "Windows":
+                    font = ImageFont.truetype("arialbd.ttf", fontsize) # Arial bold
+                else:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
+            except Exception:
+                try:
+                    if platform.system() == "Windows":
+                        font = ImageFont.truetype("arial.ttf", fontsize)
+                    else:
+                        font = font = ImageFont.load_default()
+                except Exception:
+                    font = ImageFont.load_default()
+
+            try:
+                if hasattr(draw, "textbbox"):
+                    text_bbox = draw.textbbox((0, 0), text, font=font)
+                    text_width = text_bbox[2] - text_bbox[0]
+                    text_height = text_bbox[3] - text_bbox[1]
+                else:
+                    text_width, text_height = draw.textsize(text, font=font)
+            except Exception:
+                text_width, text_height = (fontsize * len(text) // 1.5, fontsize)
+
+            # Margen inferior derecho
+            margin_right = int(width * 0.03)
+            margin_bottom = int(height * 0.03)
+            x = width - text_width - margin_right
+            y = height - text_height - margin_bottom
+
+            # Sombra y Contorno grueso para asegurar lectura
+            color_sombra = (0, 0, 0, 200)
+            offsets = [(2,2), (-2,-2), (2,-2), (-2,2), (2,0), (-2,0), (0,2), (0,-2)]
+            for ox, oy in offsets:
+                draw.text((x + ox, y + oy), text, font=font, fill=color_sombra)
+                
+            # Texto principal en tono ligeramente translúcido
+            color_texto = (255, 255, 255, 180)
+            draw.text((x, y), text, font=font, fill=color_texto)
+
+            watermarked = Image.alpha_composite(img, txt)
+            
+            if filepath.lower().endswith(('.jpg', '.jpeg')):
+                watermarked = watermarked.convert('RGB')
+                watermarked.save(filepath, quality=90)
+            else:
+                watermarked = watermarked.convert(original_mode)
+                watermarked.save(filepath)
+
+        except Exception as e:
+            print(f"Error al aplicar marca de agua: {e}")
