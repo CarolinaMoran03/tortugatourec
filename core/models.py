@@ -48,6 +48,7 @@ class SalidaTour(models.Model):
     hora = models.TimeField(null=True, blank=True) 
     cupo_maximo = models.PositiveIntegerField()
     cupos_disponibles = models.PositiveIntegerField()
+    creado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="salidas_creadas")
 
     def __str__(self):
         # Mostramos la hora en el string para identificarla en el admin
@@ -75,6 +76,7 @@ class Reserva(models.Model):
     total_pagar = models.DecimalField(max_digits=10, decimal_places=2)
     estado = models.CharField(max_length=30, choices=ESTADOS, default="pendiente")
     fecha_reserva = models.DateTimeField(default=timezone.now)
+    creado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reservas_creadas")
     
     # Nuevos campos para tracking de agencias
     archivo_agencia = models.FileField(upload_to='agencia_vouchers/', null=True, blank=True)
@@ -96,6 +98,7 @@ class Pago(models.Model):
     PROVEEDORES = (
         ("lemonsqueezy", "Lemon Squeezy"),
         ("paypal", "PayPal"),
+        ("efectivo", "Efectivo"),
     )
     ESTADOS = (
         ("created", "Created"),

@@ -62,24 +62,40 @@
                     <tbody class="divide-y divide-slate-50 text-sm">
                         {% for r in reservas %}
                         <tr class="reserva-row hover:bg-slate-50">
-                            <td class="px-8 py-6 text-slate-400 font-mono">#{{ r.id|stringformat:"05d" }}</td>
+                            <td class="px-8 py-6 text-slate-400 font-mono">
+                                #{{ r.id|stringformat:"05d" }}
+                                {% if request.user.is_superuser or request.user.is_staff %}
+                                {% if r.creado_por %}
+                                <div
+                                    class="mt-2 text-[10px] bg-slate-100 text-slate-500 rounded px-2 py-1 w-max leading-tight whitespace-nowrap">
+                                    Creado por:<br><b class="text-primary">{{ r.creado_por.username }}</b>
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                            </td>
                             <td class="px-8 py-6 font-bold">
                                 {{ r.nombre }} {{ r.apellidos }}
                                 {% if r.codigo_agencia or r.archivo_agencia %}
-                                <div class="mt-2 text-xs text-blue-600 bg-blue-50 border border-blue-100 p-2 rounded-lg font-normal w-max">
-                                    <div class="flex items-center gap-1 font-bold text-[10px] uppercase tracking-wider mb-1">
-                                        <span class="material-icons border-none text-sm leading-none">business_center</span> Agencia
+                                <div
+                                    class="mt-2 text-xs text-blue-600 bg-blue-50 border border-blue-100 p-2 rounded-lg font-normal w-max">
+                                    <div
+                                        class="flex items-center gap-1 font-bold text-[10px] uppercase tracking-wider mb-1">
+                                        <span
+                                            class="material-icons border-none text-sm leading-none">business_center</span>
+                                        Agencia
                                     </div>
                                     {% if r.codigo_agencia %}
-                                        <span>Cod: <b>{{ r.codigo_agencia }}</b></span><br>
+                                    <span>Cod: <b>{{ r.codigo_agencia }}</b></span><br>
                                     {% endif %}
                                     {% if r.limite_pago_agencia %}
-                                        <span>Límite: <b>{{ r.limite_pago_agencia|date:"d M Y" }}</b></span><br>
+                                    <span>Límite: <b>{{ r.limite_pago_agencia|date:"d M Y" }}</b></span><br>
                                     {% endif %}
                                     {% if r.archivo_agencia %}
-                                        <a href="{{ r.archivo_agencia.url }}" target="_blank" class="underline flex items-center gap-1 mt-1 text-blue-700 hover:text-blue-900 border-none">
-                                            <span class="material-icons border-none text-xs">download</span> Ver Doc Respaldo
-                                        </a>
+                                    <a href="{{ r.archivo_agencia.url }}" target="_blank"
+                                        class="underline flex items-center gap-1 mt-1 text-blue-700 hover:text-blue-900 border-none">
+                                        <span class="material-icons border-none text-xs">download</span> Ver Doc
+                                        Respaldo
+                                    </a>
                                     {% endif %}
                                 </div>
                                 {% endif %}
@@ -87,9 +103,8 @@
                             <td class="px-8 py-6 italic tour-nombre">{{ r.salida.tour.nombre }}</td>
                             <td class="px-8 py-6 font-bold monto-total">${{ r.total_pagar }}</td>
                             <td class="px-8 py-6 text-center">
-                                <span class="estado-label px-3 py-1 rounded-lg text-xs font-bold
-                                    {% if    r.estado == 'cancelada' %}bg-red-100 text-red-700                                     {% elif r.estado == 'pagada' or r.tiene_pago  %}bg-green-100 text-green-700                                     {% elif r.estado == 'bloqueada_por_agencia'  %}bg-blue-100 text-blue-700                                     {% else  %}bg-yellow-100 text-yellow-700{% endif %}">
-                                    {% if  r.estado == "pagada" or r.tiene_pago %}pagada{% elif r.estado ==                                     "bloqueada_por_agencia"  %}bloqueada agenda{% else %}{{ r.estado }}{% endif %}
+                                <span class="estado-label px-3 py-1 rounded-lg text-xs font-bold {% if r.estado == 'cancelada' %}bg-red-100 text-red-700{% elif r.estado == 'pagada' or r.tiene_pago %}bg-green-100 text-green-700{% elif r.estado == 'bloqueada_por_agencia' %}bg-blue-100 text-blue-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                                    {% if r.estado == "pagada" or r.tiene_pago %}pagada{% elif r.estado == "bloqueada_por_agencia" %}bloqueada agencia{% else %}{{ r.estado }}{% endif %}
                                 </span>
                             </td>
                             <td class="px-8 py-6 text-center">

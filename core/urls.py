@@ -54,7 +54,7 @@ urlpatterns = [
     # Checkout/Pago
     path('checkout/', views.checkout_redirect, name='checkout'),
     path('checkout/<int:reserva_id>/', views.checkout_pago, name='checkout_reserva'),
-    path('procesar-pago/', views.procesar_pago, name='procesar_pago'),
+    path('checkout/<int:reserva_id>/efectivo/', views.procesar_pago_efectivo, name='procesar_pago_efectivo'),
     path('pagos/lemonsqueezy/<int:reserva_id>/checkout/', views.create_lemonsqueezy_checkout, name='create_lemonsqueezy_checkout'),
     path('pagos/paypal/<int:reserva_id>/order/', views.create_paypal_order, name='create_paypal_order'),
     path('pagos/paypal/<int:reserva_id>/capture/', views.capture_paypal_order, name='capture_paypal_order'),

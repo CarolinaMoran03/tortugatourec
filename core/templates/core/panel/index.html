@@ -36,6 +36,7 @@
 
         <nav class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8" aria-label="Funciones principales">
 
+            {% if request.user.is_superuser or request.user.is_staff %}
             <a href="{% url 'destinos' %}"
                 class="group relative bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
                 aria-label="Administrar rutas y destinos">
@@ -88,6 +89,7 @@
                     </div>
                 </div>
             </a>
+            {% endif %}
 
             <a href="{% url 'admin_salidas' %}"
                 class="group relative bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
@@ -116,6 +118,7 @@
                 </div>
             </a>
 
+            {% if request.user.is_superuser or request.user.is_staff %}
             <a href="{% url 'admin_reservas' %}"
                 class="group relative bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
                 aria-label="Gestionar reservas y ventas">
@@ -142,6 +145,7 @@
                     </div>
                 </div>
             </a>
+            {% endif %}
 
             <a href="{% url 'secretaria_reservar' %}"
                 class="group relative bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
@@ -171,6 +175,7 @@
                 </div>
             </a>
 
+            {% if request.user.is_superuser or request.user.is_staff %}
             <a href="{% url 'admin_secretarias' %}"
                 class="group relative bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
                 aria-label="Gestionar usuarios de secretaria">
@@ -252,8 +257,80 @@
                     </div>
                 </div>
             </a>
+            {% endif %}
 
         </nav>
+
+        {% if request.user.is_superuser or request.user.is_staff %}
+        <section class="mt-16 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden"
+            aria-label="Actividad de Secretarias">
+            <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                <span class="material-icons text-primary">history</span> Actividad Reciente de Secretarías
+            </h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Columna Reservas -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Últimas Reservas
+                        (Ventas)</h3>
+                    {% if actividad_reservas %}
+                    <ul class="space-y-4">
+                        {% for res in actividad_reservas %}
+                        <li
+                            class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center group hover:bg-white transition-all">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">
+                                    <span class="text-xs mr-2 text-slate-400">#{{ res.id|stringformat:"05d" }}</span>
+                                    {{ res.nombre }} {{ res.apellidos }}
+                                </p>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                    <span class="material-icons text-[14px]">map</span> {{ res.salida.tour.nombre }}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-black text-slate-900">${{ res.total_pagar }}</p>
+                                <p class="text-[10px] uppercase font-bold text-primary mt-1">{{ res.creado_por.username }}</p>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-sm text-slate-400 italic">No hay reservas recientes hechas por secretarias.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Columna Salidas -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Últimas Disponibilidades
+                    </h3>
+                    {% if actividad_salidas %}
+                    <ul class="space-y-4">
+                        {% for sal in actividad_salidas %}
+                        <li
+                            class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center group hover:bg-white transition-all">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">
+                                    <span class="text-xs mr-2 text-slate-400">#{{ sal.id|stringformat:"05d" }}</span>
+                                    {{ sal.tour.nombre }}
+                                </p>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                    <span class="material-icons text-[14px]">calendar_today</span> {{ sal.fecha|date:"d M Y" }}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-black text-slate-900">{{ sal.cupos_disponibles }} cupos</p>
+                                <p class="text-[10px] uppercase font-bold text-primary mt-1">{{ sal.creado_por.username }}</p>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-sm text-slate-400 italic">No hay frecuencias recientes hechas por secretarias.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
 
         <footer class="mt-16 bg-slate-900 rounded-[3rem] p-8 md:p-12 text-center relative overflow-hidden"
             role="contentinfo">

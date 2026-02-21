@@ -136,6 +136,12 @@
 
                     {% for group in user.groups.all %}
                     {% if group.name == 'secretaria' %}
+                    <a href="{% url 'panel_admin' %}"
+                        class="flex items-center gap-1 bg-secondary/10 text-secondary px-3 py-2 rounded-xl hover:bg-secondary hover:text-white transition-all group"
+                        title="Panel de Control">
+                        <span class="material-icons text-xl">admin_panel_settings</span>
+                        <span class="text-[10px] font-black uppercase hidden lg:block">Gestión</span>
+                    </a>
                     <a href="{% url 'secretaria_reservar' %}"
                         class="flex items-center gap-1 bg-teal-100 dark:bg-teal-900 text-teal-600 hover:text-white hover:bg-teal-600 px-3 py-2 rounded-xl transition-all group"
                         title="Ventas">
@@ -207,6 +213,9 @@
 
                 {% for group in user.groups.all %}
                 {% if group.name == 'secretaria' %}
+                <a href="{% url 'panel_admin' %}" class="flex items-center gap-2 text-secondary font-bold py-2">
+                    <span class="material-icons">admin_panel_settings</span> Gestión
+                </a>
                 <a href="{% url 'secretaria_reservar' %}" class="flex items-center gap-2 text-teal-500 font-bold py-2">
                     <span class="material-icons">point_of_sale</span> Reservar Pasajero
                 </a>

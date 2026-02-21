@@ -22,7 +22,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from .models import Destino, Tour, SalidaTour, Reserva, Pago, Resena
+from .models import Destino, Tour, SalidaTour, Reserva, Pago, Resena, Ticket
 from .utils import generar_ticket_pdf
 from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm, TuristaLoginForm
 
@@ -489,12 +489,22 @@ def procesar_pago(request):
 # ============================================
 
 def es_admin(user):
-    return user.is_staff
+    return user.is_staff or user.is_superuser
+
+def es_admin_o_secretaria(user):
+    return user.is_staff or user.is_superuser or (user.is_authenticated and user.groups.filter(name="secretaria").exists())
 
 @login_required
-@user_passes_test(es_admin)
+@user_passes_test(es_admin_o_secretaria)
 def panel_admin(request):
-    return render(request, "core/panel/index.html")
+    context = {}
+    if request.user.is_staff or request.user.is_superuser:
+        from .models import Reserva, SalidaTour
+        # Consultar las últimas reservas y salidas creadas por algún miembro del rol "secretaria"
+        context['actividad_reservas'] = Reserva.objects.filter(creado_por__groups__name="secretaria").select_related('creado_por', 'salida__tour').order_by('-fecha_reserva')[:8]
+        context['actividad_salidas'] = SalidaTour.objects.filter(creado_por__groups__name="secretaria").select_related('creado_por', 'tour').order_by('-id')[:8]
+        
+    return render(request, "core/panel/index.html", context)
 
 @login_required
 @user_passes_test(es_admin)
@@ -509,6 +519,11 @@ def admin_reservas(request):
     )
     for reserva in reservas:
         reserva.tiene_pago = any(pago.estado == "paid" for pago in reserva.pagos.all())
+        pago_exitoso = next((pago for pago in reserva.pagos.all() if pago.estado == "paid"), None)
+        if pago_exitoso:
+            reserva.proveedor_pago = pago_exitoso.get_proveedor_display()
+        else:
+            reserva.proveedor_pago = None
     return render(request, "core/panel/reservas.html", {"reservas": reservas})
 
 @login_required
@@ -599,13 +614,13 @@ def eliminar_reserva(request, reserva_id):
     return redirect("admin_reservas")
 
 @login_required
-@user_passes_test(es_admin)
+@user_passes_test(es_admin_o_secretaria)
 def admin_salidas(request):
     salidas = SalidaTour.objects.select_related("tour").all()
     return render(request, "core/panel/salidas.html", {"salidas": salidas})
 
 @login_required
-@user_passes_test(es_admin)
+@user_passes_test(es_admin_o_secretaria)
 def editar_salida(request, salida_id):
     salida = get_object_or_404(SalidaTour, id=salida_id)
     if request.method == "POST":
@@ -619,7 +634,7 @@ def editar_salida(request, salida_id):
     return render(request, "core/panel/editar_salida.html", {"salida": salida})
 
 @login_required
-@user_passes_test(es_admin)
+@user_passes_test(es_admin_o_secretaria)
 def crear_salida(request):
     tours = Tour.objects.all()
     
@@ -636,7 +651,8 @@ def crear_salida(request):
             fecha=fecha,
             hora=hora,
             cupo_maximo=cupo_maximo,
-            cupos_disponibles=cupo_maximo
+            cupos_disponibles=cupo_maximo,
+            creado_por=request.user
         )
         
         messages.success(request, "¡Salida programada correctamente!")
@@ -1414,6 +1430,14 @@ def perfil_admin(request):
     from .models import UserProfile
     from django.contrib.auth import update_session_auth_hash
     
+    # Verificar si el usuario es secretaria
+    is_secretaria = request.user.groups.filter(name="secretaria").exists()
+    
+    # Si es secretaria y está inactivo, mostrar mensaje
+    if is_secretaria and not request.user.is_active:
+        messages.error(request, "Tu cuenta de secretaria ha sido desactivada. Por favor, contacta al administrador.")
+        return redirect('home')
+    
     # Aseguramos que el usuario tiene un perfil asociado
     perfil, _ = UserProfile.objects.get_or_create(user=request.user)
 
@@ -1534,7 +1558,9 @@ def secretaria_reservar(request):
             telefono=telefono,
             identificacion=identificacion,
             estado="pendiente",
+            creado_por=request.user,
         )
+
         messages.success(
             request,
             f"Reserva #{reserva.id:06d} creada. Ahora puedes cobrarla desde checkout o panel.",
@@ -1553,6 +1579,28 @@ def secretaria_reservar(request):
             "destino_seleccionado": destino_seleccionado,
         },
     )
+
+@require_POST
+@login_required
+@user_passes_test(es_admin_o_secretaria)
+def procesar_pago_efectivo(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if reserva.estado == "pagada":
+        messages.warning(request, "La reserva ya está pagada.")
+        return redirect("checkout_reserva", reserva_id=reserva_id)
+    
+    try:
+        # Generar ticket antes si no existe
+        if not hasattr(reserva, 'ticket'):
+            Ticket.objects.create(
+                reserva=reserva,
+                codigo=f"TKT-{reserva.id:06d}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            )
+        _mark_reserva_paid(reserva.id, "efectivo", payload={"method": "efectivo", "user": request.user.username})
+        messages.success(request, f"¡Reserva #{reserva.id:06d} cobrada en EFECTIVO exitosamente!")
+    except ValueError as e:
+        messages.error(request, str(e))
+    return redirect("checkout_reserva", reserva_id=reserva_id)
 
 @login_required
 @user_passes_test(es_admin)

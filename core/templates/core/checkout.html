@@ -140,6 +140,34 @@
                             </p>
                             {% endif %}
 
+                            {% if request.user.is_authenticated %}
+                            {% if request.user.is_staff or request.user.is_superuser %}
+                            <form method="post" action="{% url 'procesar_pago_efectivo' reserva.id %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                    onclick="return confirm('¿Confirmas que recibiste el pago de esta reserva en efectivo físico?');"
+                                    class="w-full bg-emerald-600 text-white hover:bg-emerald-700 font-black py-4 px-6 rounded-2xl shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3 mt-4">
+                                    <span class="material-icons">payments</span>
+                                    COBRAR EN EFECTIVO
+                                </button>
+                            </form>
+                            {% else %}
+                            {% for group in request.user.groups.all %}
+                            {% if group.name == 'secretaria' %}
+                            <form method="post" action="{% url 'procesar_pago_efectivo' reserva.id %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                    onclick="return confirm('¿Confirmas que recibiste el pago de esta reserva en efectivo físico?');"
+                                    class="w-full bg-emerald-600 text-white hover:bg-emerald-700 font-black py-4 px-6 rounded-2xl shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3 mt-4">
+                                    <span class="material-icons">payments</span>
+                                    COBRAR EN EFECTIVO
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% endfor %}
+                            {% endif %}
+                            {% endif %}
+
                             {% if paypal_enabled %}
                             <div class="relative flex items-center justify-center py-6">
                                 <hr class="w-full border-slate-700">

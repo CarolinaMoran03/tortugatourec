@@ -57,7 +57,7 @@ class TuristaLoginForm(AuthenticationForm):
         
         self.error_messages.update({
             'invalid_login': "Usuario o contraseña incorrectos. Por favor, intenta de nuevo.",
-            'inactive': "Esta cuenta se encuentra inactiva.",
+            'inactive': "Tu cuenta ha sido desactivada. Por favor, contacta al administrador.",
         })
 
     def clean(self):
@@ -82,6 +82,15 @@ class TuristaLoginForm(AuthenticationForm):
                 self.confirm_login_allowed(self.user_cache)
 
         return self.cleaned_data
+
+    def confirm_login_allowed(self, user):
+        """Verifica si el usuario está activo."""
+        if not user.is_active:
+            raise forms.ValidationError(
+                self.error_messages['inactive'],
+                code='inactive',
+            )
+        super().confirm_login_allowed(user)
 
 class RegistroTuristaForm(UserCreationForm):
     first_name = forms.CharField(
