@@ -41,6 +41,10 @@ def home(request):
         tour.precio_adulto_display = display["adulto"]
         tour.precio_nino_display = display["nino"]
 
+    if request.GET.get('pago') == 'ok':
+        from django.contrib import messages
+        messages.success(request, "¡Gracias! Tu pago está siendo procesado. El estado de tu reserva se actualizará en unos minutos una vez confirmado.")
+
     context = {
         "destinos": destinos,
         "tours_destacados": tours_destacados,
@@ -897,9 +901,9 @@ def checkout_redirect(request):
 
 
 def _site_url(request=None):
-    if request is None:
-        return getattr(settings, "SITE_URL", "").rstrip("/")
-    return getattr(settings, "SITE_URL", request.build_absolute_uri("/").rstrip("/"))
+    if request is not None:
+        return request.build_absolute_uri("/").rstrip("/")
+    return getattr(settings, "SITE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 def _currency():
