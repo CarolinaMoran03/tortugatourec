@@ -96,6 +96,7 @@ class Pago(models.Model):
     PROVEEDORES = (
         ("lemonsqueezy", "Lemon Squeezy"),
         ("paypal", "PayPal"),
+        ("cash", "Efectivo"),
     )
     ESTADOS = (
         ("created", "Created"),
