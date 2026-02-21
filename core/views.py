@@ -71,40 +71,6 @@ def tours(request):
     }
     return render(request, "core/tours.html", context)
 
-def _auto_generar_salidas_tour(tour, max_dias=30):
-    if not (tour.hora_turno_1 or tour.hora_turno_2):
-        return
-        
-    ahora = timezone.now()
-    fecha_hoy = ahora.date()
-    
-    salidas_existentes = SalidaTour.objects.filter(tour=tour, fecha__gte=fecha_hoy)
-    existentes = {}
-    for s in salidas_existentes:
-        if s.fecha not in existentes:
-            existentes[s.fecha] = set()
-        existentes[s.fecha].add(s.hora)
-        
-    nuevas_salidas = []
-    for d in range(max_dias):
-        fecha_iter = fecha_hoy + timedelta(days=d)
-        
-        if tour.hora_turno_1 and tour.hora_turno_1 not in existentes.get(fecha_iter, set()):
-            nuevas_salidas.append(SalidaTour(
-                tour=tour, fecha=fecha_iter, hora=tour.hora_turno_1,
-                cupo_maximo=tour.cupo_maximo, cupos_disponibles=tour.cupo_maximo,
-                duracion=tour.duracion
-            ))
-            
-        if tour.hora_turno_2 and tour.hora_turno_2 not in existentes.get(fecha_iter, set()):
-            nuevas_salidas.append(SalidaTour(
-                tour=tour, fecha=fecha_iter, hora=tour.hora_turno_2,
-                cupo_maximo=tour.cupo_maximo, cupos_disponibles=tour.cupo_maximo,
-                duracion=tour.duracion
-            ))
-            
-    if nuevas_salidas:
-        SalidaTour.objects.bulk_create(nuevas_salidas)
 
 def lista_tours(request):
     destino_id = request.GET.get("destino")
@@ -114,11 +80,9 @@ def lista_tours(request):
     if not (destino_id and fecha and personas):
         return render(request, "core/lista_tours.html", {"tours_con_salidas": {}})
         
-    # Auto generar salidas para este destino antes de filtrar
-    tours_destino = Tour.objects.filter(destino_id=destino_id)
-    for t in tours_destino:
-        _auto_generar_salidas_tour(t)
-
+    # Eliminada la generación automática para evitar saturación.
+    # Las salidas ahora se crean manualmente o por bulto desde el panel.
+    
     salidas_brutas = SalidaTour.objects.filter(
         tour__destino_id=destino_id,
         fecha=fecha,
@@ -164,8 +128,6 @@ def lista_tours(request):
 def tour_detalle(request, pk):
     tour = get_object_or_404(Tour, pk=pk)
     
-    # Auto generar salidas para los proximos dias
-    _auto_generar_salidas_tour(tour)
     
     # Filtrar solo salidas futuras con cupos disponibles (y que no haya pasado la hora si es hoy)
     ahora = timezone.now()
@@ -558,13 +520,21 @@ def panel_admin(request):
 @user_passes_test(es_admin)
 def admin_reservas(request):
     Reserva.objects.filter(pagos__estado="paid").exclude(estado="pagada").update(estado="pagada")
-
-    reservas = (
+    
+    # Filtros
+    fecha_filtro = request.GET.get('fecha')
+    
+    reservas_query = (
         Reserva.objects.select_related("salida__tour")
         .prefetch_related("pagos")
         .exclude(estado="pendiente")
-        .order_by("-id")
     )
+    
+    if fecha_filtro:
+        reservas_query = reservas_query.filter(salida__fecha=fecha_filtro)
+        
+    reservas = reservas_query.order_by("-id")
+    
     for reserva in reservas:
         reserva.tiene_pago = any(pago.estado == "paid" for pago in reserva.pagos.all())
         pago_exitoso = next((pago for pago in reserva.pagos.all() if pago.estado == "paid"), None)
@@ -664,8 +634,41 @@ def eliminar_reserva(request, reserva_id):
 @login_required
 @user_passes_test(es_admin_o_secretaria)
 def admin_salidas(request):
-    salidas = SalidaTour.objects.select_related("tour").all()
-    return render(request, "core/panel/salidas.html", {"salidas": salidas})
+    fecha_filtro = request.GET.get('fecha')
+    salidas_query = SalidaTour.objects.select_related("tour")
+    
+    if fecha_filtro:
+        salidas_query = salidas_query.filter(fecha=fecha_filtro)
+    
+    salidas = salidas_query.order_by('-fecha', 'hora')
+    return render(request, "core/panel/salidas.html", {
+        "salidas": salidas,
+        "fecha_filtro": fecha_filtro
+    })
+
+@login_required
+@user_passes_test(es_admin_o_secretaria)
+def eliminar_salida(request, salida_id):
+    salida = get_object_or_404(SalidaTour, id=salida_id)
+    # Solo permitir eliminar si no tiene reservas pagadas
+    if salida.reservas.filter(estado="pagada").exists():
+        messages.error(request, "No puedes eliminar una salida que ya tiene reservas pagadas.")
+    else:
+        salida.delete()
+        messages.success(request, "La salida ha sido eliminada correctamente.")
+    return redirect("admin_salidas")
+
+@login_required
+@user_passes_test(es_admin)
+def limpiar_salidas_vacias(request):
+    # Eliminar salidas que no tengan NINGUNA reserva
+    from django.db.models import Count
+    # Filtramos las que tienen 0 reservas
+    vacias = SalidaTour.objects.annotate(num_reservas=Count('reservas')).filter(num_reservas=0)
+    cantidad = vacias.count()
+    vacias.delete()
+    messages.success(request, f"Se han eliminado {cantidad} salidas sin reservas (vacias).")
+    return redirect("admin_salidas")
 
 @login_required
 @user_passes_test(es_admin_o_secretaria)
@@ -690,25 +693,50 @@ def crear_salida(request):
     
     if request.method == "POST":
         tour_id = request.POST.get("tour")
-        fecha = request.POST.get("fecha")
+        fecha_inicio_str = request.POST.get("fecha")
+        fecha_fin_str = request.POST.get("fecha_fin")
         hora_post = request.POST.get("hora")
-        hora = hora_post if hora_post else None
+        ambos_turnos = request.POST.get("ambos_turnos") == "on"
         cupo_maximo = int(request.POST.get("cupo_maximo"))
         duracion = request.POST.get("duracion")
         
         tour = get_object_or_404(Tour, id=tour_id)
         
-        SalidaTour.objects.create(
-            tour=tour,
-            fecha=fecha,
-            hora=hora,
-            duracion=duracion or tour.duracion,
-            cupo_maximo=cupo_maximo,
-            cupos_disponibles=cupo_maximo,
-            creado_por=request.user
-        )
+        from datetime import datetime
+        fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
         
-        messages.success(request, "¡Salida programada correctamente!")
+        fechas = [fecha_inicio]
+        if fecha_fin_str:
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+            dias = (fecha_fin - fecha_inicio).days
+            for d in range(1, dias + 1):
+                fechas.append(fecha_inicio + timedelta(days=d))
+        
+        salidas_creadas = 0
+        for f in fechas:
+            # Turnos a crear
+            horas = []
+            if ambos_turnos:
+                if tour.hora_turno_1: horas.append(tour.hora_turno_1)
+                if tour.hora_turno_2: horas.append(tour.hora_turno_2)
+            elif hora_post:
+                horas.append(hora_post)
+            
+            for h in horas:
+                # Evitar duplicados exactos
+                if not SalidaTour.objects.filter(tour=tour, fecha=f, hora=h).exists():
+                    SalidaTour.objects.create(
+                        tour=tour,
+                        fecha=f,
+                        hora=h,
+                        duracion=duracion or tour.duracion,
+                        cupo_maximo=cupo_maximo,
+                        cupos_disponibles=cupo_maximo,
+                        creado_por=request.user
+                    )
+                    salidas_creadas += 1
+        
+        messages.success(request, f"¡Se han programado {salidas_creadas} salidas correctamente!")
         return redirect("admin_salidas")
 
     return render(request, "core/panel/crear_salida.html", {"tours": tours})
@@ -761,6 +789,22 @@ def admin_tours(request):
     tours_list = Tour.objects.all().order_by('-id')
     destinos_list = Destino.objects.all()
     
+    # Soporte para vista de calendario de disponibilidad global
+    salidas_json = []
+    # Traemos salidas de los próximos 3 meses para el calendario
+    today = timezone.now().date()
+    future = today + timezone.timedelta(days=90)
+    salidas_calendar = SalidaTour.objects.filter(fecha__range=[today, future]).select_related('tour')
+    
+    for s in salidas_calendar:
+        salidas_json.append({
+            'title': f"{s.tour.nombre} ({s.cupos_disponibles})",
+            'start': s.fecha.isoformat(),
+            'url': f"/panel/salidas/editar/{s.id}/",
+            'backgroundColor': '#13B6EC' if s.cupos_disponibles > 5 else '#ef4444',
+            'borderColor': '#13B6EC' if s.cupos_disponibles > 5 else '#ef4444',
+        })
+
     if request.method == 'POST':
         form = TourForm(request.POST)
         if form.is_valid():
@@ -773,6 +817,7 @@ def admin_tours(request):
         form = TourForm()
 
     return render(request, 'core/panel/tours.html', {
+        'salidas_json': salidas_json,
         'tours': tours_list,
         'form': form,
         'destinos': destinos_list
@@ -797,6 +842,16 @@ def editar_tour(request, pk):
         form = TourForm(instance=tour)
 
     return render(request, "core/panel/editar_tour.html", {"form": form, "tour": tour})
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_tour(request, pk):
+    tour = get_object_or_404(Tour, pk=pk)
+    if request.method == 'POST':
+        nombre = tour.nombre
+        tour.delete()
+        messages.success(request, f"Tour '{nombre}' eliminado correctamente.")
+    return redirect('admin_tours')
 
 # ============================================
 # AUTENTICACIÓN

@@ -2,11 +2,12 @@ from django.urls import path, include
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
+
 # URLs de TortugaTur
 urlpatterns = [
     path("", views.home, name="home"),
-    path("tours/", views.tours, name="tours"),  # lista general (TODOS)
-    path("buscar/", views.lista_tours, name="lista_tours"),  # 🔍 RESULTADOS FILTRADOS
+    path("tours/", views.tours, name="tours"),
+    path("buscar/", views.lista_tours, name="lista_tours"),
     path("tours/<int:pk>/", views.tour_detalle, name="tour_detalle"),
     path("tours/<int:pk>/resena/", views.crear_resena, name="crear_resena"),
     path("ticket/<int:reserva_id>/", views.ticket_reserva, name="ticket_reserva"),
@@ -21,13 +22,16 @@ urlpatterns = [
     path("panel/reservas/<int:reserva_id>/eliminar/", views.eliminar_reserva, name="eliminar_reserva"),
     path("panel/salidas/", views.admin_salidas, name="admin_salidas"),
     path("panel/salidas/<int:salida_id>/editar/", views.editar_salida, name="editar_salida"),
+    path("panel/salidas/<int:salida_id>/eliminar/", views.eliminar_salida, name="eliminar_salida"),
+    path("panel/salidas/limpiar/", views.limpiar_salidas_vacias, name="limpiar_salidas_vacias"),
     path("panel/salidas/nueva/", views.crear_salida, name="crear_salida"),
-    # Tu archivo core/urls.py
+    
     path('panel/destinos/', views.destinos, name='destinos'),
     path('panel/destinos/editar/<int:pk>/', views.editar_destino, name='editar_destino'),
     path('panel/destinos/eliminar/<int:pk>/', views.eliminar_destino, name='eliminar_destino'),
     path("panel/tours/", views.admin_tours, name="admin_tours"),
     path("panel/tours/editar/<int:pk>/", views.editar_tour, name="editar_tour"),
+    path("panel/tours/eliminar/<int:pk>/", views.eliminar_tour, name="eliminar_tour"),
     path("panel/galeria/", views.panel_galeria, name="panel_galeria"),
     path("panel/galeria/eliminar/<int:pk>/", views.eliminar_galeria, name="eliminar_galeria"),
     path("panel/perfil/", views.perfil_admin, name="perfil_admin"),
@@ -39,19 +43,15 @@ urlpatterns = [
     path("panel/secretarias/<int:user_id>/toggle/", views.toggle_secretaria_estado, name="toggle_secretaria_estado"),
     path("panel/secretarias/<int:user_id>/eliminar/", views.eliminar_secretaria, name="eliminar_secretaria"),
 
-    #logueo
     path('registro/', views.registro, name='registro'),
     path('login/', views.vista_login, name='login'),
     path('logout/', views.vista_logout, name='logout'),
-    path('', include('django.contrib.auth.urls')), # Password reset views
-    # Ruta para ver las reservaciones del usuario
+    path('', include('django.contrib.auth.urls')),
     path('mis-reservas/', views.mis_reservas, name='mis_reservas'),
     
-    # Ruta para ver el ticket después de reservar
     path('ticket/<int:reserva_id>/', views.ticket_reserva, name='ticket_reserva'),
     path('ticket/<int:reserva_id>/pdf/', views.ver_ticket_pdf, name='ver_ticket_pdf'),
     
-    # Checkout/Pago
     path('checkout/', views.checkout_redirect, name='checkout'),
     path('checkout/<int:reserva_id>/', views.checkout_pago, name='checkout_reserva'),
     path('checkout/<int:reserva_id>/efectivo/', views.procesar_pago_efectivo, name='procesar_pago_efectivo'),
@@ -61,8 +61,8 @@ urlpatterns = [
     path('webhooks/lemonsqueezy/', views.lemonsqueezy_webhook, name='lemonsqueezy_webhook'),
     path('webhooks/paypal/', views.paypal_webhook, name='paypal_webhook'),
 
-    #imagenes
     path('galeria/', views.galeria_view, name='galeria'),
 ]
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
