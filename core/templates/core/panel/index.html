@@ -1,4 +1,4 @@
-{% extends "core/base.html" %}
+﻿{% extends "core/base.html" %}
 {% block title %}Admin Dashboard | TortugaTur{% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
                     </h1>
                     <p class="text-slate-500 mt-4 max-w-2xl text-lg font-medium">
                         Bienvenido, <span class="text-slate-900 font-bold">{{ user.username }}</span>. Central de
-                        control para operaciones, destinos y logística de TortugaTur.
+                        control para operaciones, destinos y logÃ­stica de TortugaTur.
                     </p>
                 </div>
 
@@ -52,7 +52,7 @@
                         <h3 class="text-2xl font-black text-slate-900 group-hover:text-purple-600 transition-colors">
                             Destinos</h3>
                         <p class="mt-3 text-slate-500 leading-relaxed font-medium">
-                            Gestiona las islas y puntos de visita. Optimiza la información geográfica de Galápagos.
+                            Gestiona las islas y puntos de visita. Optimiza la informaciÃ³n geogrÃ¡fica de GalÃ¡pagos.
                         </p>
                     </div>
                     <div
@@ -65,7 +65,7 @@
 
             <a href="{% url 'admin_tours' %}"
                 class="group relative bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
-                aria-label="Gestionar catálogo de tours">
+                aria-label="Gestionar catÃ¡logo de tours">
                 <div
                     class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[5rem] transition-transform group-hover:scale-110">
                 </div>
@@ -76,9 +76,9 @@
                     </div>
                     <div class="mt-8">
                         <h3 class="text-2xl font-black text-slate-900 group-hover:text-primary transition-colors">
-                            Catálogo de Tours</h3>
+                            CatÃ¡logo de Tours</h3>
                         <p class="mt-3 text-slate-500 leading-relaxed font-medium">
-                            Diseña experiencias únicas. Edita itinerarios, galerías de fotos y precios por temporada.
+                            DiseÃ±a experiencias Ãºnicas. Edita itinerarios, galerÃ­as de fotos y precios por temporada.
                         </p>
                     </div>
                     <div
@@ -106,7 +106,7 @@
                         <h3 class="text-2xl font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
                             Disponibilidad</h3>
                         <p class="mt-3 text-slate-500 leading-relaxed font-medium">
-                            Control de inventario. Ajusta cupos máximos por fecha y bloquea días feriados.
+                            Control de inventario. Ajusta cupos mÃ¡ximos por fecha y bloquea dÃ­as feriados.
                         </p>
                     </div>
                     <div
@@ -259,7 +259,7 @@
 
             <a href="{% url 'panel_galeria' %}"
                 class="group relative bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
-                aria-label="Gestionar fotos de la galería">
+                aria-label="Gestionar fotos de la galerÃ­a">
                 <div
                     class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-[5rem] transition-transform group-hover:scale-110">
                 </div>
@@ -270,15 +270,15 @@
                     </div>
                     <div class="mt-8">
                         <h3 class="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                            Galería de Fotos</h3>
+                            GalerÃ­a de Fotos</h3>
                         <p class="mt-3 text-slate-500 leading-relaxed font-medium">
-                            Sube imágenes locales o agrega URLs de Google Drive para enriquecer los tours y reseñas
+                            Sube imÃ¡genes locales o agrega URLs de Google Drive para enriquecer los tours y reseÃ±as
                             visuales.
                         </p>
                     </div>
                     <div
                         class="mt-8 flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest border-t border-slate-50 pt-6">
-                        Administrar Galería <span
+                        Administrar GalerÃ­a <span
                             class="material-icons text-sm group-hover:translate-x-2 transition-transform"
                             aria-hidden="true">arrow_forward</span>
                     </div>
@@ -292,13 +292,67 @@
         <section class="mt-16 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden"
             aria-label="Actividad de Secretarias">
             <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                <span class="material-icons text-primary">history</span> Actividad Reciente de Secretarías
+                <span class="material-icons text-primary">history</span> Actividad Reciente de SecretarÃ­as
             </h2>
+
+            <div class="flex items-end gap-3 mb-6">
+                <form method="get" class="flex items-end gap-2">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-slate-400 font-black mb-1">Fecha de actividad</label>
+                        <input type="date" name="actividad_fecha" value="{{ actividad_fecha|date:'Y-m-d' }}"
+                            class="px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold text-sm">
+                    </div>
+                    <button type="submit"
+                        class="h-10 px-4 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-primary transition">
+                        Ver dia
+                    </button>
+                </form>
+                <a href="{% url 'descargar_actividad_dia_pdf' %}?actividad_fecha={{ actividad_fecha|date:'Y-m-d' }}"
+                    class="h-10 px-4 inline-flex items-center rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest hover:border-primary hover:text-primary transition">
+                    Descargar PDF
+                </a>
+            </div>
+
+            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">
+                Actividades del {{ actividad_fecha|date:"d/m/Y" }}
+            </h3>
+            {% if agenda_secretarias_dia %}
+            <div class="overflow-x-auto border border-slate-100 rounded-2xl mb-8">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Tipo</th>
+                            <th class="px-4 py-3 text-left">Referencia</th>
+                            <th class="px-4 py-3 text-left">Detalle</th>
+                            <th class="px-4 py-3 text-left">Estado</th>
+                            <th class="px-4 py-3 text-left">Hora</th>
+                            <th class="px-4 py-3 text-right">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in agenda_secretarias_dia %}
+                        <tr class="border-t border-slate-100">
+                            <td class="px-4 py-3 text-xs font-black uppercase text-slate-500">{{ item.tipo }}</td>
+                            <td class="px-4 py-3 font-bold text-slate-700">#{{ item.id|stringformat:"05d" }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ item.titulo }} | {{ item.tour }}</td>
+                            <td class="px-4 py-3 text-slate-600 uppercase text-xs font-bold">{{ item.estado }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ item.dt|date:"h:i A" }}</td>
+                            <td class="px-4 py-3 text-right font-black text-slate-900">
+                                {% if item.monto %}${{ item.monto }}{% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-slate-400 italic mb-8">No hay actividades de secretarias en esa fecha.</p>
+            {% endif %}
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- Columna Reservas -->
                 <div>
-                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Últimas Reservas
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Ãšltimas Reservas
                         (Ventas)</h3>
                     {% if actividad_reservas %}
                     <ul class="space-y-4">
@@ -328,7 +382,7 @@
 
                 <!-- Columna Salidas -->
                 <div>
-                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Últimas Disponibilidades
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Ãšltimas Disponibilidades
                     </h3>
                     {% if actividad_salidas %}
                     <ul class="space-y-4">
@@ -359,6 +413,93 @@
         </section>
         {% endif %}
 
+        {% if es_secretaria_panel %}
+        <section class="mt-16 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden"
+            aria-label="Resumen de Secretaria">
+            <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                <span class="material-icons text-primary">point_of_sale</span> Modulo de Ventas y Gestion
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+                    <p class="text-[10px] uppercase tracking-widest text-slate-400 font-black">Reservas</p>
+                    <p class="text-3xl font-black text-slate-900 mt-1">{{ resumen_secretaria.total_reservas|default:0 }}</p>
+                </div>
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+                    <p class="text-[10px] uppercase tracking-widest text-slate-400 font-black">Ingresos</p>
+                    <p class="text-3xl font-black text-emerald-600 mt-1">${{ resumen_secretaria.total_ventas|default:"0.00" }}</p>
+                </div>
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+                    <p class="text-[10px] uppercase tracking-widest text-slate-400 font-black">Efectivo</p>
+                    <p class="text-3xl font-black text-slate-900 mt-1">${{ resumen_secretaria.total_efectivo|default:"0.00" }}</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 mb-6">
+                <a href="{% url 'secretaria_reservar' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-black text-xs uppercase tracking-widest hover:bg-primary-dark transition">
+                    <span class="material-icons text-sm">point_of_sale</span> Ventas / Reserva Asistida
+                </a>
+                <a href="{% url 'admin_salidas' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition">
+                    <span class="material-icons text-sm">calendar_today</span> Gestion de Disponibilidad
+                </a>
+            </div>
+
+            <div class="flex items-end gap-3 mt-2 mb-5">
+                <form method="get" class="flex items-end gap-2">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-slate-400 font-black mb-1">Fecha de actividad</label>
+                        <input type="date" name="actividad_fecha" value="{{ actividad_fecha|date:'Y-m-d' }}"
+                            class="px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold text-sm">
+                    </div>
+                    <button type="submit"
+                        class="h-10 px-4 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-primary transition">
+                        Ver dia
+                    </button>
+                </form>
+                <a href="{% url 'descargar_actividad_dia_pdf' %}?actividad_fecha={{ actividad_fecha|date:'Y-m-d' }}"
+                    class="h-10 px-4 inline-flex items-center rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest hover:border-primary hover:text-primary transition">
+                    Descargar PDF
+                </a>
+            </div>
+
+            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">
+                Actividades del {{ actividad_fecha|date:"d/m/Y" }}
+            </h3>
+            {% if agenda_secretaria_dia %}
+            <div class="overflow-x-auto border border-slate-100 rounded-2xl">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Tipo</th>
+                            <th class="px-4 py-3 text-left">Referencia</th>
+                            <th class="px-4 py-3 text-left">Detalle</th>
+                            <th class="px-4 py-3 text-left">Estado</th>
+                            <th class="px-4 py-3 text-left">Hora</th>
+                            <th class="px-4 py-3 text-right">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in agenda_secretaria_dia %}
+                        <tr class="border-t border-slate-100">
+                            <td class="px-4 py-3 text-xs font-black uppercase text-slate-500">{{ item.tipo }}</td>
+                            <td class="px-4 py-3 font-bold text-slate-700">#{{ item.id|stringformat:"05d" }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ item.titulo }} | {{ item.tour }}</td>
+                            <td class="px-4 py-3 text-slate-600 uppercase text-xs font-bold">{{ item.estado }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ item.dt|date:"h:i A" }}</td>
+                            <td class="px-4 py-3 text-right font-black text-slate-900">
+                                {% if item.monto %}${{ item.monto }}{% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-slate-400 italic">No hay actividades en esa fecha.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
         <footer class="mt-16 bg-slate-900 rounded-[3rem] p-8 md:p-12 text-center relative overflow-hidden"
             role="contentinfo">
             <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
@@ -368,16 +509,16 @@
                 <span class="material-icons text-primary text-4xl mb-4" aria-hidden="true">security</span>
                 <h4 class="text-white text-xl font-bold mb-4">Seguridad del Sistema</h4>
                 <p class="text-slate-400 text-sm leading-relaxed">
-                    Estás en un área restringida. Todas las modificaciones quedan registradas en el log de auditoría.
-                    Asegúrate de cerrar sesión al terminar tu jornada para proteger la integridad de los datos.
+                    EstÃ¡s en un Ã¡rea restringida. Todas las modificaciones quedan registradas en el log de auditorÃ­a.
+                    AsegÃºrate de cerrar sesiÃ³n al terminar tu jornada para proteger la integridad de los datos.
                 </p>
                 <div class="mt-8 flex justify-center gap-4">
                     <form action="{% url 'logout' %}" method="post">
                         {% csrf_token %}
                         <button type="submit"
                             class="bg-white/10 hover:bg-red-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
-                            aria-label="Cerrar sesión">
-                            Finalizar Sesión
+                            aria-label="Cerrar sesiÃ³n">
+                            Finalizar SesiÃ³n
                         </button>
                     </form>
                 </div>
@@ -457,3 +598,4 @@
     }
 </style>
 {% endblock %}
+

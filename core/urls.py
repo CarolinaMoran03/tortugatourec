@@ -44,6 +44,7 @@ urlpatterns = [
     path("panel/secretarias/<int:user_id>/toggle/", views.toggle_secretaria_estado, name="toggle_secretaria_estado"),
     path("panel/secretarias/<int:user_id>/eliminar/", views.eliminar_secretaria, name="eliminar_secretaria"),
     path("panel/secretarias/<int:user_id>/reset-password/", views.reset_secretaria_password, name="reset_secretaria_password"),
+    path("panel/actividad/pdf/", views.descargar_actividad_dia_pdf, name="descargar_actividad_dia_pdf"),
 
     path('registro/', views.registro, name='registro'),
     path('login/', views.vista_login, name='login'),

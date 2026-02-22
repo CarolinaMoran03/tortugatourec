@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import hmac
 import hashlib
@@ -16,14 +16,16 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime, time
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import transaction
+from django.db.models import Q, Sum
+from collections import defaultdict
 from .models import Destino, Tour, SalidaTour, Reserva, Pago, Resena, Ticket, EmpresaConfig
-from .utils import generar_ticket_pdf
+from .utils import generar_ticket_pdf, generar_actividad_dia_pdf
 from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm, TuristaLoginForm, EmpresaConfigForm
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,8 @@ logger = logging.getLogger(__name__)
 CHILD_PRICE_0_2 = Decimal("10.00")
 CHILD_PRICE_3_5 = Decimal("35.00")
 CHILD_PRICE_NORMAL = Decimal("70.00")
+GROUP_SECRETARIA = "secretaria"
+GROUP_AGENCIA = "agencia"
 
 
 def _precio_nino_por_edad(edad_nino):
@@ -42,8 +46,88 @@ def _precio_nino_por_edad(edad_nino):
         return CHILD_PRICE_3_5
     return CHILD_PRICE_NORMAL
 
+
+def _agenda_actividad(reservas, salidas):
+    agenda = defaultdict(list)
+
+    for reserva in reservas:
+        fecha_ref = reserva.fecha_reserva.date()
+        agenda[fecha_ref].append({
+            "tipo": "reserva",
+            "dt": reserva.fecha_reserva,
+            "id": reserva.id,
+            "titulo": f"{reserva.nombre} {reserva.apellidos}".strip(),
+            "tour": reserva.salida.tour.nombre,
+            "estado": reserva.estado,
+            "monto": reserva.total_pagar,
+        })
+
+    for salida in salidas:
+        hora_ref = salida.hora if salida.hora else time.min
+        dt_salida = timezone.make_aware(datetime.combine(salida.fecha, hora_ref), timezone.get_current_timezone())
+        agenda[salida.fecha].append({
+            "tipo": "salida",
+            "dt": dt_salida,
+            "id": salida.id,
+            "titulo": salida.tour.nombre,
+            "tour": salida.tour.nombre,
+            "estado": f"{salida.cupos_disponibles}/{salida.cupo_maximo} cupos",
+            "monto": None,
+        })
+
+    resultado = []
+    for fecha, items in sorted(agenda.items(), key=lambda x: x[0], reverse=True):
+        items_sorted = sorted(items, key=lambda x: x["dt"], reverse=True)
+        resultado.append({"fecha": fecha, "eventos": items_sorted})
+    return resultado
+
+
+def _secretaria_actividad_dia(user, fecha):
+    reservas_dia = (
+        Reserva.objects.filter(creado_por=user, fecha_reserva__date=fecha)
+        .exclude(estado="cancelada")
+        .select_related("salida__tour")
+        .prefetch_related("pagos")
+    )
+    salidas_dia = (
+        SalidaTour.objects.filter(creado_por=user, fecha=fecha)
+        .select_related("tour")
+    )
+
+    items = []
+    for res in reservas_dia:
+        pago_ok = next((p for p in res.pagos.all() if p.estado == "paid"), None)
+        items.append({
+            "tipo": "reserva",
+            "dt": res.fecha_reserva,
+            "id": res.id,
+            "titulo": f"{res.nombre} {res.apellidos}".strip(),
+            "tour": res.salida.tour.nombre,
+            "estado": res.estado,
+            "monto": res.total_pagar,
+            "metodo_pago": pago_ok.get_proveedor_display() if pago_ok else "Pendiente",
+            "usuario": user.username,
+        })
+
+    for sal in salidas_dia:
+        hora_ref = sal.hora if sal.hora else time.min
+        dt_salida = timezone.make_aware(datetime.combine(sal.fecha, hora_ref), timezone.get_current_timezone())
+        items.append({
+            "tipo": "salida",
+            "dt": dt_salida,
+            "id": sal.id,
+            "titulo": sal.tour.nombre,
+            "tour": sal.tour.nombre,
+            "estado": f"{sal.cupos_disponibles}/{sal.cupo_maximo} cupos",
+            "monto": None,
+            "metodo_pago": "-",
+            "usuario": user.username,
+        })
+
+    return sorted(items, key=lambda x: x["dt"], reverse=True)
+
 # ============================================
-# VISTAS PÚBLICAS
+# VISTAS PÃšBLICAS
 # ============================================
 
 def home(request):
@@ -57,7 +141,7 @@ def home(request):
 
     if request.GET.get('pago') == 'ok':
         from django.contrib import messages
-        messages.success(request, "¡Gracias! Tu pago está siendo procesado. El estado de tu reserva se actualizará en unos minutos una vez confirmado.")
+        messages.success(request, "Â¡Gracias! Tu pago estÃ¡ siendo procesado. El estado de tu reserva se actualizarÃ¡ en unos minutos una vez confirmado.")
 
     context = {
         "destinos": destinos,
@@ -94,7 +178,7 @@ def lista_tours(request):
     if not (destino_id and fecha and personas):
         return render(request, "core/lista_tours.html", {"tours_con_salidas": {}})
         
-    # Eliminada la generación automática para evitar saturación.
+    # Eliminada la generaciÃ³n automÃ¡tica para evitar saturaciÃ³n.
     # Las salidas ahora se crean manualmente o por bulto desde el panel.
     
     salidas_brutas = SalidaTour.objects.filter(
@@ -110,10 +194,10 @@ def lista_tours(request):
     # Agrupamos por Tour y filtramos fechas/horas pasadas
     tours_con_salidas = {}
     for s in salidas_brutas:
-        # Invalidar si la fecha de búsqueda ya pasó
+        # Invalidar si la fecha de bÃºsqueda ya pasÃ³
         if s.fecha < fecha_hoy:
             continue
-        # Invalidar si es hoy y la hora ya pasó
+        # Invalidar si es hoy y la hora ya pasÃ³
         if s.fecha == fecha_hoy and s.hora and s.hora < hora_actual:
             continue
             
@@ -161,7 +245,7 @@ def tour_detalle(request, pk):
         salidas.append(s)
 
     if request.method == "POST":
-        # Verificar si es una petición AJAX
+        # Verificar si es una peticiÃ³n AJAX
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
         try:
@@ -199,16 +283,16 @@ def tour_detalle(request, pk):
                     return redirect('tour_detalle', pk=pk)
 
             # Validaciones
-            es_agencia = hasattr(request.user, 'perfil') and request.user.perfil.is_agencia
+            usuario_es_agencia = es_agencia(request.user)
             
             fecha_agencia = request.POST.get("fecha_agencia")
 
-            if es_agencia and fecha_agencia:
+            if usuario_es_agencia and fecha_agencia:
                 from datetime import datetime
                 try:
                     fecha_obj = datetime.strptime(fecha_agencia, "%Y-%m-%d").date()
                 except ValueError:
-                    error_msg = "Formato de fecha inválido."
+                    error_msg = "Formato de fecha invÃ¡lido."
                     if is_ajax: return JsonResponse({'error': error_msg}, status=400)
                     messages.error(request, error_msg)
                     return redirect('tour_detalle', pk=pk)
@@ -263,7 +347,7 @@ def tour_detalle(request, pk):
                 messages.error(request, error_msg)
                 return redirect('tour_detalle', pk=pk)
 
-            # Validar datos obligatorios solo si el usuario está autenticado
+            # Validar datos obligatorios solo si el usuario estÃ¡ autenticado
             if request.user.is_authenticated and not all([nombre, telefono, identificacion]):
                 error_msg = "Completa todos tus datos personales."
                 if is_ajax:
@@ -271,25 +355,25 @@ def tour_detalle(request, pk):
                 messages.error(request, error_msg)
                 return redirect('tour_detalle', pk=pk)
 
-            if es_agencia:
+            if usuario_es_agencia:
                 if total_personas > 16:
-                    error_msg = "Las agencias solo pueden bloquear un máximo de 16 pasajeros por reserva."
+                    error_msg = "Las agencias solo pueden bloquear un mÃ¡ximo de 16 pasajeros por reserva."
                     if is_ajax:
                         return JsonResponse({'error': error_msg}, status=400)
                     messages.error(request, error_msg)
                     return redirect('tour_detalle', pk=pk)
 
-                # Calcular total a pagar (adulto/niño) referencial
+                # Calcular total a pagar (adulto/niÃ±o) referencial
                 precio_adulto = tour.precio_adulto_final()
                 total_ninos = sum(_precio_nino_por_edad(edad) for edad in edades_ninos)
                 total_pagar = (adultos * precio_adulto) + total_ninos
 
-                # Calcular fecha límite (15 días a partir de hoy)
+                # Calcular fecha lÃ­mite (15 dÃ­as a partir de hoy)
                 fecha_limite = timezone.now() + timedelta(days=15)
                 codigo_agencia = request.POST.get("codigo_agencia", "")
                 
                 if not codigo_agencia:
-                    error_msg = "El código de agencia (VOUCHER) es obligatorio."
+                    error_msg = "El cÃ³digo de agencia (VOUCHER) es obligatorio."
                     if is_ajax:
                         return JsonResponse({'error': error_msg}, status=400)
                     messages.error(request, error_msg)
@@ -323,7 +407,7 @@ def tour_detalle(request, pk):
                     salida.cupos_disponibles -= total_personas
                     salida.save(update_fields=["cupos_disponibles"])
 
-                msg = "¡Bloqueo exitoso! Tienes la responsabilidad de confirmar o cancelar esta reserva antes de la fecha límite."
+                msg = "Â¡Bloqueo exitoso! Tienes la responsabilidad de confirmar o cancelar esta reserva antes de la fecha lÃ­mite."
                 if is_ajax:
                     return JsonResponse({
                         'success': True,
@@ -336,7 +420,7 @@ def tour_detalle(request, pk):
 
             else:
                 # Flujo normal de Turista
-                # Calcular total a pagar (adulto/niño)
+                # Calcular total a pagar (adulto/niÃ±o)
                 precio_adulto = tour.precio_adulto_final()
                 total_ninos = sum(_precio_nino_por_edad(edad) for edad in edades_ninos)
                 total_pagar = (adultos * precio_adulto) + total_ninos
@@ -356,7 +440,7 @@ def tour_detalle(request, pk):
                     estado="pendiente"  # IMPORTANTE: Pendiente hasta que pague
                 )
 
-                # NO descontamos cupos aquí, se descontarán después del pago
+                # NO descontamos cupos aquÃ­, se descontarÃ¡n despuÃ©s del pago
 
                 # Responder con la URL del checkout
                 if is_ajax:
@@ -401,6 +485,7 @@ def tour_detalle(request, pk):
         "currency_options": list(getattr(settings, "CURRENCY_RATES", {}).keys()),
         "currency_rates_json": json.dumps(getattr(settings, "CURRENCY_RATES", {})),
         "whatsapp_message": f"Hola, quiero informacion del tour {tour.nombre}",
+        "user_is_agencia": es_agencia(request.user),
         "child_price_0_2": str(CHILD_PRICE_0_2),
         "child_price_3_5": str(CHILD_PRICE_3_5),
         "child_price_normal": str(CHILD_PRICE_NORMAL),
@@ -446,7 +531,7 @@ def ver_ticket_pdf(request, reserva_id):
 # ============================================
 
 def checkout(request, reserva_id=None):
-    """Vista para la página de checkout/pago"""
+    """Vista para la pÃ¡gina de checkout/pago"""
     
     # Si se especifica una reserva, cargar sus datos
     if reserva_id:
@@ -472,7 +557,7 @@ def procesar_pago(request):
         reserva_id = request.POST.get('reserva_id')
         
         if not reserva_id:
-            messages.error(request, 'No se encontró la reserva')
+            messages.error(request, 'No se encontrÃ³ la reserva')
             return redirect('tours')
         
         # Obtener los datos del formulario
@@ -484,12 +569,12 @@ def procesar_pago(request):
         try:
             reserva = get_object_or_404(Reserva, id=reserva_id)
             
-            # Verificar que la reserva esté pendiente
+            # Verificar que la reserva estÃ© pendiente
             if reserva.estado != 'pendiente':
                 messages.warning(request, 'Esta reserva ya fue procesada.')
                 return redirect('tours')
             
-            # Aquí iría la integración con pasarela de pago real
+            # AquÃ­ irÃ­a la integraciÃ³n con pasarela de pago real
             # Por ahora, simulamos que el pago fue exitoso
             
             # Actualizar la reserva a PAGADA
@@ -498,7 +583,7 @@ def procesar_pago(request):
                 reserva.correo = email.strip().lower()
             reserva.save()
             
-            # AHORA SÍ descontamos los cupos
+            # AHORA SÃ descontamos los cupos
             salida = reserva.salida
             total_personas = reserva.adultos + reserva.ninos
             salida.cupos_disponibles -= total_personas
@@ -510,7 +595,7 @@ def procesar_pago(request):
                 pdf_content = pdf_buffer.getvalue()
                 pdf_buffer.close()
                 
-                asunto = f"✅ Confirmación de Reserva #{reserva.id:06d} - TortugaTur"
+                asunto = f"âœ… ConfirmaciÃ³n de Reserva #{reserva.id:06d} - TortugaTur"
                 mensaje_html = render_to_string("core/email_ticket.html", {"reserva": reserva, "empresa": _empresa_config()})
                 
                 # Enviar al cliente
@@ -527,14 +612,14 @@ def procesar_pago(request):
             except Exception as e:
                 print(f"Error enviando email: {e}")
             
-            messages.success(request, '¡Pago procesado exitosamente! Tu reserva ha sido confirmada. Revisa tu email.')
+            messages.success(request, 'Â¡Pago procesado exitosamente! Tu reserva ha sido confirmada. Revisa tu email.')
             return redirect('tours')
             
         except Exception as e:
             messages.error(request, f'Error al procesar el pago: {str(e)}')
             return redirect('checkout_reserva', reserva_id=reserva_id)
     
-    messages.error(request, 'Método no permitido')
+    messages.error(request, 'MÃ©todo no permitido')
     return redirect('tours')
 
 # ============================================
@@ -544,28 +629,177 @@ def procesar_pago(request):
 def es_admin(user):
     return user.is_staff or user.is_superuser
 
+def es_secretaria(user):
+    return user.is_authenticated and user.groups.filter(name__iexact=GROUP_SECRETARIA).exists()
+
+def es_agencia(user):
+    if not user.is_authenticated:
+        return False
+    if user.groups.filter(name__iexact=GROUP_AGENCIA).exists():
+        return True
+    perfil = getattr(user, "perfil", None)
+    return bool(perfil and getattr(perfil, "is_agencia", False))
+
+def es_staff_o_secretaria(user):
+    return es_admin(user) or es_secretaria(user)
+
 def es_admin_o_secretaria(user):
-    return user.is_staff or user.is_superuser or (user.is_authenticated and user.groups.filter(name="secretaria").exists())
+    return es_staff_o_secretaria(user)
 
 @login_required
 @user_passes_test(es_admin_o_secretaria)
 def panel_admin(request):
-    context = {}
+    actividad_fecha_str = (request.GET.get("actividad_fecha") or "").strip()
+    try:
+        actividad_fecha = datetime.strptime(actividad_fecha_str, "%Y-%m-%d").date() if actividad_fecha_str else timezone.localdate()
+    except ValueError:
+        actividad_fecha = timezone.localdate()
+
+    context = {
+        "es_secretaria_panel": es_secretaria(request.user) and not es_admin(request.user),
+        "actividad_fecha": actividad_fecha,
+    }
     if request.user.is_staff or request.user.is_superuser:
-        from .models import Reserva, SalidaTour
-        # Consultar las últimas reservas y salidas creadas por algún miembro del rol "secretaria"
-        context['actividad_reservas'] = (
-            Reserva.objects
-            .filter(creado_por__groups__name="secretaria")
+        secretaria_group = Group.objects.filter(name__iexact=GROUP_SECRETARIA).first()
+        if secretaria_group:
+            context["actividad_reservas"] = (
+                Reserva.objects.filter(creado_por__groups=secretaria_group)
+                .exclude(estado="cancelada")
+                .select_related("creado_por", "salida__tour")
+                .distinct()
+                .order_by("-fecha_reserva")[:8]
+            )
+            context["actividad_salidas"] = (
+                SalidaTour.objects.filter(creado_por__groups=secretaria_group)
+                .select_related("creado_por", "tour")
+                .distinct()
+                .order_by("-id")[:8]
+            )
+            agenda_admin = _agenda_actividad(
+                Reserva.objects.filter(creado_por__groups=secretaria_group)
+                .exclude(estado="cancelada")
+                .select_related("creado_por", "salida__tour")
+                .distinct()
+                .order_by("-fecha_reserva")[:400],
+                SalidaTour.objects.filter(creado_por__groups=secretaria_group)
+                .select_related("creado_por", "tour")
+                .distinct()
+                .order_by("-id")[:400],
+            )
+            agenda_dia = next((g["eventos"] for g in agenda_admin if g["fecha"] == actividad_fecha), [])
+            context["agenda_secretarias_dia"] = agenda_dia
+        else:
+            context["actividad_reservas"] = []
+            context["actividad_salidas"] = []
+            context["agenda_secretarias_dia"] = []
+    elif context["es_secretaria_panel"]:
+        reservas_secretaria = (
+            Reserva.objects.filter(creado_por=request.user)
             .exclude(estado="cancelada")
-            .select_related('creado_por', 'salida__tour')
-            .distinct()
-            .order_by('-fecha_reserva')[:8]
+            .select_related("salida__tour")
+            .prefetch_related("pagos")
+            .order_by("-fecha_reserva")
         )
-        context['actividad_salidas'] = SalidaTour.objects.filter(creado_por__groups__name="secretaria").select_related('creado_por', 'tour').order_by('-id')[:8]
-        
+        total_ventas_pagadas = sum((r.total_pagar for r in reservas_secretaria if r.estado == "pagada"), Decimal("0.00"))
+        efectivo_cobrado = (
+            Pago.objects.filter(
+                reserva__creado_por=request.user,
+                estado="paid",
+                proveedor="efectivo",
+            ).aggregate(total=Sum("monto")).get("total") or Decimal("0.00")
+        )
+        historial_ventas = list(reservas_secretaria[:20])
+        for res in historial_ventas:
+            pago_ok = next((p for p in res.pagos.all() if p.estado == "paid"), None)
+            res.metodo_pago = pago_ok.get_proveedor_display() if pago_ok else "Pendiente"
+
+        context["resumen_secretaria"] = {
+            "total_reservas": reservas_secretaria.count(),
+            "total_ventas": total_ventas_pagadas,
+            "total_efectivo": efectivo_cobrado,
+            "total_pasajeros": sum((r.total_personas() for r in reservas_secretaria), 0),
+        }
+        salidas_secretaria = (
+            SalidaTour.objects.filter(creado_por=request.user)
+            .select_related("tour")
+            .order_by("-id")
+        )
+        context["agenda_secretaria_dia"] = _secretaria_actividad_dia(request.user, actividad_fecha)
+
     return render(request, "core/panel/index.html", context)
 
+
+@login_required
+@user_passes_test(es_admin_o_secretaria)
+def descargar_actividad_dia_pdf(request):
+    actividad_fecha_str = (request.GET.get("actividad_fecha") or "").strip()
+    try:
+        actividad_fecha = datetime.strptime(actividad_fecha_str, "%Y-%m-%d").date() if actividad_fecha_str else timezone.localdate()
+    except ValueError:
+        messages.error(request, "Fecha invalida para generar el PDF.")
+        return redirect("panel_admin")
+
+    if es_secretaria(request.user) and not es_admin(request.user):
+        items = _secretaria_actividad_dia(request.user, actividad_fecha)
+        titulo = f"Actividad del dia - Secretaria {request.user.username}"
+    else:
+        reservas_admin = (
+            Reserva.objects.filter(fecha_reserva__date=actividad_fecha)
+            .exclude(estado="cancelada")
+            .select_related("salida__tour", "creado_por", "usuario")
+            .prefetch_related("pagos")
+            .distinct()
+        )
+        salidas_admin = (
+            SalidaTour.objects.filter(fecha=actividad_fecha)
+            .select_related("tour", "creado_por")
+            .distinct()
+        )
+        items = []
+        for res in reservas_admin:
+            pago_ok = next((p for p in res.pagos.all() if p.estado == "paid"), None)
+            if res.creado_por:
+                autor = res.creado_por.username
+            elif res.usuario:
+                autor = res.usuario.username
+            else:
+                autor = "web"
+            items.append({
+                "tipo": "reserva",
+                "dt": res.fecha_reserva,
+                "id": res.id,
+                "titulo": f"{res.nombre} {res.apellidos}".strip(),
+                "tour": res.salida.tour.nombre,
+                "estado": res.estado,
+                "monto": res.total_pagar,
+                "metodo_pago": pago_ok.get_proveedor_display() if pago_ok else "Pendiente",
+                "usuario": autor,
+            })
+        for sal in salidas_admin:
+            hora_ref = sal.hora if sal.hora else time.min
+            dt_salida = timezone.make_aware(datetime.combine(sal.fecha, hora_ref), timezone.get_current_timezone())
+            items.append({
+                "tipo": "salida",
+                "dt": dt_salida,
+                "id": sal.id,
+                "titulo": sal.tour.nombre,
+                "tour": sal.tour.nombre,
+                "estado": f"{sal.cupos_disponibles}/{sal.cupo_maximo} cupos",
+                "monto": None,
+                "metodo_pago": "-",
+                "usuario": sal.creado_por.username if sal.creado_por else "sistema",
+            })
+        items = sorted(items, key=lambda x: x["dt"], reverse=True)
+        titulo = "Actividad general del dia"
+
+    resumen = {
+        "total_registros": len(items),
+        "total_ventas": sum((item["monto"] or Decimal("0.00") for item in items), Decimal("0.00")),
+    }
+    buffer = generar_actividad_dia_pdf(titulo, actividad_fecha, items, resumen)
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="actividad_{actividad_fecha.strftime("%Y%m%d")}.pdf"'
+    return response
 
 def _empresa_config():
     empresa, _ = EmpresaConfig.objects.get_or_create(id=1, defaults={"nombre_empresa": "TortugaTur"})
@@ -630,7 +864,13 @@ def cambiar_estado_reserva(request, reserva_id):
 @user_passes_test(es_admin)
 def admin_agencias(request):
     from django.contrib.auth.models import User
-    usuarios = User.objects.filter(perfil__is_agencia=True).select_related('perfil').order_by('-date_joined')
+    group_agencia, _ = Group.objects.get_or_create(name=GROUP_AGENCIA)
+    usuarios = (
+        User.objects.filter(Q(groups=group_agencia) | Q(perfil__is_agencia=True))
+        .select_related("perfil")
+        .distinct()
+        .order_by("-date_joined")
+    )
     return render(request, "core/panel/agencias.html", {"usuarios": usuarios})
 
 @login_required
@@ -642,37 +882,39 @@ def crear_agencia(request):
     import string
     import random
 
-    username = request.POST.get('username')
-    email = request.POST.get('email')
-    first_name = request.POST.get('nombre', '')
-    
+    username = request.POST.get("username")
+    email = request.POST.get("email")
+    first_name = request.POST.get("nombre", "")
+
     if not username or not email:
         messages.error(request, "El nombre de usuario y el correo son obligatorios.")
-        return redirect('admin_agencias')
-        
-    if User.objects.filter(username=username).exists():
-        messages.error(request, "Ese nombre de usuario ya está en uso.")
-        return redirect('admin_agencias')
-        
-    if User.objects.filter(email=email).exists():
-        messages.error(request, "Ese correo electrónico ya está registrado.")
-        return redirect('admin_agencias')
+        return redirect("admin_agencias")
 
-    password = request.POST.get('password')
+    if User.objects.filter(username=username).exists():
+        messages.error(request, "Ese nombre de usuario ya esta en uso.")
+        return redirect("admin_agencias")
+
+    if User.objects.filter(email=email).exists():
+        messages.error(request, "Ese correo electronico ya esta registrado.")
+        return redirect("admin_agencias")
+
+    password = request.POST.get("password")
     if not password:
         characters = string.ascii_letters + string.digits
-        password = ''.join(random.choice(characters) for i in range(10))
+        password = "".join(random.choice(characters) for i in range(10))
 
     try:
+        group_agencia, _ = Group.objects.get_or_create(name=GROUP_AGENCIA)
         user = User.objects.create_user(username=username, email=email, password=password, first_name=first_name)
         perfil, _ = UserProfile.objects.get_or_create(user=user)
         perfil.is_agencia = True
         perfil.save()
-        messages.success(request, f"¡Agencia creada existosamente! 💼 Usuario: {username} | Contraseña: {password}")
+        user.groups.add(group_agencia)
+        messages.success(request, f"Agencia creada. Usuario: {username} | Contrasena: {password}")
     except Exception as e:
-        messages.error(request, f"Ocurrió un error al crear la agencia: {e}")
-        
-    return redirect('admin_agencias')
+        messages.error(request, f"Ocurrio un error al crear la agencia: {e}")
+
+    return redirect("admin_agencias")
 
 @login_required
 @user_passes_test(es_admin)
@@ -680,15 +922,23 @@ def crear_agencia(request):
 def toggle_agencia(request, user_id):
     from .models import UserProfile
     from django.contrib.auth.models import User
+    group_agencia, _ = Group.objects.get_or_create(name=GROUP_AGENCIA)
     user = get_object_or_404(User, id=user_id)
-    perfil, created = UserProfile.objects.get_or_create(user=user)
-    perfil.is_agencia = not perfil.is_agencia
+    perfil, _ = UserProfile.objects.get_or_create(user=user)
+
+    ahora_es_agencia = not user.groups.filter(id=group_agencia.id).exists()
+    if ahora_es_agencia:
+        user.groups.add(group_agencia)
+    else:
+        user.groups.remove(group_agencia)
+
+    perfil.is_agencia = ahora_es_agencia
     perfil.save()
-    if perfil.is_agencia:
+    if ahora_es_agencia:
         messages.success(request, f"{user.username} ha sido convertida en Agencia.")
     else:
-        messages.warning(request, f"{user.username} perdió sus privilegios de Agencia.")
-    return redirect('admin_agencias')
+        messages.warning(request, f"{user.username} perdio sus privilegios de Agencia.")
+    return redirect("admin_agencias")
 
 @login_required
 @user_passes_test(es_admin)
@@ -706,6 +956,9 @@ def eliminar_reserva(request, reserva_id):
 def admin_salidas(request):
     fecha_filtro = request.GET.get('fecha')
     salidas_query = SalidaTour.objects.select_related("tour")
+    solo_lectura = es_secretaria(request.user) and not es_admin(request.user)
+    puede_crear_salida = es_admin(request.user) or es_secretaria(request.user)
+    puede_gestionar_salidas = es_admin(request.user)
     
     if fecha_filtro:
         salidas_query = salidas_query.filter(fecha=fecha_filtro)
@@ -713,11 +966,14 @@ def admin_salidas(request):
     salidas = salidas_query.order_by('-fecha', 'hora')
     return render(request, "core/panel/salidas.html", {
         "salidas": salidas,
-        "fecha_filtro": fecha_filtro
+        "fecha_filtro": fecha_filtro,
+        "solo_lectura": solo_lectura,
+        "puede_crear_salida": puede_crear_salida,
+        "puede_gestionar_salidas": puede_gestionar_salidas,
     })
 
 @login_required
-@user_passes_test(es_admin_o_secretaria)
+@user_passes_test(es_admin)
 def eliminar_salida(request, salida_id):
     salida = get_object_or_404(SalidaTour, id=salida_id)
     # Solo permitir eliminar si no tiene reservas pagadas
@@ -741,7 +997,7 @@ def limpiar_salidas_vacias(request):
     return redirect("admin_salidas")
 
 @login_required
-@user_passes_test(es_admin_o_secretaria)
+@user_passes_test(es_admin)
 def editar_salida(request, salida_id):
     salida = get_object_or_404(SalidaTour, id=salida_id)
     if request.method == "POST":
@@ -806,7 +1062,7 @@ def crear_salida(request):
                     )
                     salidas_creadas += 1
         
-        messages.success(request, f"¡Se han programado {salidas_creadas} salidas correctamente!")
+        messages.success(request, f"Â¡Se han programado {salidas_creadas} salidas correctamente!")
         return redirect("admin_salidas")
 
     return render(request, "core/panel/crear_salida.html", {"tours": tours})
@@ -814,83 +1070,91 @@ def crear_salida(request):
 @login_required
 @user_passes_test(es_admin)
 def destinos(request):
-    destinos_list = Destino.objects.all().order_by('-id')
-    
-    if request.method == 'POST':
+    destinos_list = Destino.objects.all().order_by("-id")
+    solo_lectura = es_secretaria(request.user) and not es_admin(request.user)
+
+    if request.method == "POST":
+        if solo_lectura:
+            messages.error(request, "Tu rol solo tiene permiso de lectura en destinos.")
+            return redirect("destinos")
         form = DestinoForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "¡Destino agregado con éxito!")
-            return redirect('destinos')
+            messages.success(request, "Destino agregado con exito.")
+            return redirect("destinos")
     else:
-        form = DestinoForm()
-            
-    return render(request, 'core/panel/destinos.html', {
-        'destinos': destinos_list,
-        'form': form
+        form = DestinoForm() if not solo_lectura else None
+
+    return render(request, "core/panel/destinos.html", {
+        "destinos": destinos_list,
+        "form": form,
+        "solo_lectura": solo_lectura,
     })
 
 @login_required
 @user_passes_test(es_admin)
 def editar_destino(request, pk):
     destino = get_object_or_404(Destino, pk=pk)
-    if request.method == 'POST':
+    if request.method == "POST":
         form = DestinoForm(request.POST, instance=destino)
         if form.is_valid():
             form.save()
-            messages.success(request, "Destino actualizado con éxito.")
-            return redirect('destinos')
+            messages.success(request, "Destino actualizado con exito.")
+            return redirect("destinos")
     else:
         form = DestinoForm(instance=destino)
-    return render(request, 'core/panel/editar_destino.html', {'form': form, 'destino': destino})
+    return render(request, "core/panel/editar_destino.html", {"form": form, "destino": destino})
 
 @login_required
 @user_passes_test(es_admin)
 def eliminar_destino(request, pk):
     destino = get_object_or_404(Destino, pk=pk)
-    if request.method == 'POST':
+    if request.method == "POST":
         destino.delete()
         messages.success(request, "Destino eliminado correctamente.")
-    return redirect('destinos')
+    return redirect("destinos")
 
 @login_required
 @user_passes_test(es_admin)
 def admin_tours(request):
-    tours_list = Tour.objects.all().order_by('-id')
+    tours_list = Tour.objects.all().order_by("-id")
     destinos_list = Destino.objects.all()
-    
-    # Soporte para vista de calendario de disponibilidad global
+    solo_lectura = es_secretaria(request.user) and not es_admin(request.user)
+
     salidas_json = []
-    # Traemos salidas de los próximos 3 meses para el calendario
     today = timezone.now().date()
     future = today + timezone.timedelta(days=90)
-    salidas_calendar = SalidaTour.objects.filter(fecha__range=[today, future]).select_related('tour')
-    
+    salidas_calendar = SalidaTour.objects.filter(fecha__range=[today, future]).select_related("tour")
+
     for s in salidas_calendar:
         salidas_json.append({
-            'title': f"{s.tour.nombre} ({s.cupos_disponibles})",
-            'start': s.fecha.isoformat(),
-            'url': f"/panel/salidas/editar/{s.id}/",
-            'backgroundColor': '#13B6EC' if s.cupos_disponibles > 5 else '#ef4444',
-            'borderColor': '#13B6EC' if s.cupos_disponibles > 5 else '#ef4444',
+            "title": f"{s.tour.nombre} ({s.cupos_disponibles})",
+            "start": s.fecha.isoformat(),
+            "url": f"/panel/salidas/editar/{s.id}/" if not solo_lectura else "",
+            "backgroundColor": "#13B6EC" if s.cupos_disponibles > 5 else "#ef4444",
+            "borderColor": "#13B6EC" if s.cupos_disponibles > 5 else "#ef4444",
         })
 
-    if request.method == 'POST':
+    if request.method == "POST":
+        if solo_lectura:
+            messages.error(request, "Tu rol solo tiene permiso de lectura en tours.")
+            return redirect("admin_tours")
         form = TourForm(request.POST)
         if form.is_valid():
             tour = form.save(commit=False)
             tour.cupos_disponibles = tour.cupo_maximo
             tour.save()
-            messages.success(request, f"Tour '{tour.nombre}' creado exitosamente.")
-            return redirect('admin_tours')
+            messages.success(request, "Tour creado exitosamente.")
+            return redirect("admin_tours")
     else:
-        form = TourForm()
+        form = TourForm() if not solo_lectura else None
 
-    return render(request, 'core/panel/tours.html', {
-        'salidas_json': salidas_json,
-        'tours': tours_list,
-        'form': form,
-        'destinos': destinos_list
+    return render(request, "core/panel/tours.html", {
+        "salidas_json": salidas_json,
+        "tours": tours_list,
+        "form": form,
+        "destinos": destinos_list,
+        "solo_lectura": solo_lectura,
     })
 
 
@@ -924,7 +1188,7 @@ def eliminar_tour(request, pk):
     return redirect('admin_tours')
 
 # ============================================
-# AUTENTICACIÓN
+# AUTENTICACIÃ“N
 # ============================================
 
 def registro(request):
@@ -933,14 +1197,14 @@ def registro(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, f"¡Bienvenido a TortugaTur, {user.first_name}!")
+            messages.success(request, f"Â¡Bienvenido a TortugaTur, {user.first_name}!")
             return redirect('home')
     else:
         form = RegistroTuristaForm()
     return render(request, 'registration/registro.html', {'form': form})
 
 def vista_login(request):
-    """Maneja el inicio de sesión y la redirección al tour original."""
+    """Maneja el inicio de sesiÃ³n y la redirecciÃ³n al tour original."""
     next_url = request.GET.get('next', 'home')
     
     if request.method == 'POST':
@@ -948,7 +1212,7 @@ def vista_login(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            messages.success(request, f"¡Qué bueno verte de nuevo, {user.first_name}!")
+            messages.success(request, f"Â¡QuÃ© bueno verte de nuevo, {user.first_name}!")
             return redirect(request.POST.get('next', 'home'))
     else:
         form = TuristaLoginForm()
@@ -959,9 +1223,9 @@ def vista_login(request):
     })
 
 def vista_logout(request):
-    """Cierra la sesión y redirige a la página de inicio."""
+    """Cierra la sesiÃ³n y redirige a la pÃ¡gina de inicio."""
     logout(request)
-    messages.info(request, "Has cerrado sesión correctamente.")
+    messages.info(request, "Has cerrado sesiÃ³n correctamente.")
     return redirect('home')
 
 from django.contrib.auth.decorators import login_required
@@ -973,7 +1237,7 @@ def mis_reservas(request):
     return render(request, 'core/mis_reservas.html', {'reservas': reservas})
 
 # ============================================
-# OTRAS PÁGINAS
+# OTRAS PÃGINAS
 # ============================================
 
 def nosotros(request):
@@ -985,7 +1249,7 @@ def contacto(request):
         if form.is_valid():
             datos = form.cleaned_data
             
-            subject = f"✨ Nuevo Contacto: {datos['asunto']} - {datos['nombre']}"
+            subject = f"âœ¨ Nuevo Contacto: {datos['asunto']} - {datos['nombre']}"
             html_content = render_to_string('emails/aviso_contacto.html', {
                 'nombre': datos['nombre'],
                 'email_usuario': datos['email'],
@@ -1004,7 +1268,7 @@ def contacto(request):
                 msg.attach_alternative(html_content, "text/html")
                 msg.send()
 
-                messages.success(request, "¡Mensaje enviado con éxito!")
+                messages.success(request, "Â¡Mensaje enviado con Ã©xito!")
                 return redirect('contacto')
             except Exception as e:
                 messages.error(request, "Error al enviar el correo.")
@@ -1149,7 +1413,7 @@ def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
         estado_anterior = reserva.estado
 
         personas = reserva.adultos + reserva.ninos
-        # IMPORTANTE: No restar cupos si ya se restaron cuando la agencia bloqueó
+        # IMPORTANTE: No restar cupos si ya se restaron cuando la agencia bloqueÃ³
         if estado_anterior != "bloqueada_por_agencia":
             if salida.cupos_disponibles < personas:
                 raise ValueError("No hay cupos suficientes al confirmar el pago.")
@@ -1190,8 +1454,8 @@ def _mark_reserva_paid(reserva_id, proveedor, external_id="", payload=None):
     if estado_anterior == "bloqueada_por_agencia" and reserva.usuario and reserva.usuario.email:
         from django.core.mail import send_mail
         from django.template.loader import render_to_string
-        subject = f"Confirmación de Pago a Agencia - Reserva #{reserva.id:06d}"
-        msg_plain = f"Gracias por su pago. La reserva del código {reserva.codigo_agencia} ha sido procesada."
+        subject = f"ConfirmaciÃ³n de Pago a Agencia - Reserva #{reserva.id:06d}"
+        msg_plain = f"Gracias por su pago. La reserva del cÃ³digo {reserva.codigo_agencia} ha sido procesada."
         send_mail(
             subject=subject,
             message=msg_plain,
@@ -1574,7 +1838,7 @@ def panel_galeria(request):
         form = GaleriaForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            messages.success(request, "¡Imagen agregada a la galería con éxito!")
+            messages.success(request, "Â¡Imagen agregada a la galerÃ­a con Ã©xito!")
             return redirect('panel_galeria')
         else:
             messages.error(request, "Error al subir la imagen. Verifica los datos.")
@@ -1601,7 +1865,7 @@ def eliminar_galeria(request, pk):
     foto = get_object_or_404(Galeria, pk=pk)
     if request.method == 'POST':
         foto.delete()
-        messages.success(request, "Foto eliminada de la galería.")
+        messages.success(request, "Foto eliminada de la galerÃ­a.")
     return redirect('panel_galeria')
 
 @login_required
@@ -1611,9 +1875,9 @@ def perfil_admin(request):
     from django.contrib.auth import update_session_auth_hash
     
     # Verificar si el usuario es secretaria
-    is_secretaria = request.user.groups.filter(name="secretaria").exists()
+    is_secretaria = request.user.groups.filter(name__iexact=GROUP_SECRETARIA).exists()
     
-    # Si es secretaria y está inactivo, mostrar mensaje
+    # Si es secretaria y estÃ¡ inactivo, mostrar mensaje
     if is_secretaria and not request.user.is_active:
         messages.error(request, "Tu cuenta de secretaria ha sido desactivada. Por favor, contacta al administrador.")
         return redirect('home')
@@ -1670,27 +1934,27 @@ def perfil_admin(request):
             if not User.objects.filter(username=new_username).exists():
                 request.user.username = new_username
             else:
-                messages.error(request, "Ese nombre de usuario ya está ocupado.")
+                messages.error(request, "Ese nombre de usuario ya estÃ¡ ocupado.")
                 return redirect('perfil_admin')
         
         request.user.save()
         
-        # Opciones extra (Foto, Teléfono, Biografía)
+        # Opciones extra (Foto, TelÃ©fono, BiografÃ­a)
         if 'foto' in request.FILES:
             perfil.foto = request.FILES['foto']
         perfil.telefono = request.POST.get('telefono', perfil.telefono)
         perfil.biografia = request.POST.get('biografia', perfil.biografia)
         perfil.save()
         
-        # Cambio de contraseña si se proporcionó una
+        # Cambio de contraseÃ±a si se proporcionÃ³ una
         new_password = request.POST.get('new_password')
         if new_password:
             request.user.set_password(new_password)
             request.user.save()
-            update_session_auth_hash(request, request.user) # Evita que se cierre sesión
-            messages.success(request, "¡Contraseña actualizada!")
+            update_session_auth_hash(request, request.user) # Evita que se cierre sesiÃ³n
+            messages.success(request, "Â¡ContraseÃ±a actualizada!")
             
-        messages.success(request, "Perfil guardado con éxito.")
+        messages.success(request, "Perfil guardado con Ã©xito.")
         return redirect('perfil_admin')
 
     # Si es secretaria, obtener sus reservas
@@ -1724,12 +1988,8 @@ def _parse_int(value, default=0):
     except (TypeError, ValueError):
         return default
 
-def es_secretaria(user):
-    return user.is_authenticated and user.groups.filter(name="secretaria").exists()
-
-
 def puede_reservar_asistida(user):
-    return user.is_staff or es_secretaria(user)
+    return es_staff_o_secretaria(user)
 
 
 @login_required
@@ -1773,8 +2033,8 @@ def secretaria_reservar(request):
             )
             for salida in salidas:
                 tours_con_salidas.setdefault(salida.tour, []).append(salida)
-            # Si hay búsqueda activa, el formulario "IR A RESERVAR"
-            # solo debe mostrar horarios de ese día buscado.
+            # Si hay bÃºsqueda activa, el formulario "IR A RESERVAR"
+            # solo debe mostrar horarios de ese dÃ­a buscado.
             tours_reserva_directa = tours_con_salidas
     if request.method == "POST":
         salida_id = request.POST.get("salida_id")
@@ -1795,9 +2055,11 @@ def secretaria_reservar(request):
         if not salida.hay_cupo(adultos, ninos):
             messages.error(request, "No hay cupos disponibles para esa salida.")
             return redirect("secretaria_reservar")
-        if not all([nombre, apellidos, correo, telefono, identificacion]):
+        if not all([nombre, apellidos, telefono, identificacion]):
             messages.error(request, "Completa todos los datos del cliente.")
             return redirect("secretaria_reservar")
+        if not correo:
+            correo = f"sin-correo-reserva-{timezone.now().strftime('%Y%m%d%H%M%S')}@tortugatur.local"
 
         edades_ninos = []
         if ninos > 0:
@@ -1859,7 +2121,7 @@ def secretaria_reservar(request):
 def procesar_pago_efectivo(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
     if reserva.estado == "pagada":
-        messages.warning(request, "La reserva ya está pagada.")
+        messages.warning(request, "La reserva ya estÃ¡ pagada.")
         return redirect("checkout_reserva", reserva_id=reserva_id)
     
     try:
@@ -1870,7 +2132,7 @@ def procesar_pago_efectivo(request, reserva_id):
                 codigo=f"TKT-{reserva.id:06d}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
             )
         _mark_reserva_paid(reserva.id, "efectivo", payload={"method": "efectivo", "user": request.user.username})
-        messages.success(request, f"¡Reserva #{reserva.id:06d} cobrada en EFECTIVO exitosamente!")
+        messages.success(request, f"Â¡Reserva #{reserva.id:06d} cobrada en EFECTIVO exitosamente!")
     except ValueError as e:
         messages.error(request, str(e))
     return redirect("checkout_reserva", reserva_id=reserva_id)
@@ -1878,7 +2140,7 @@ def procesar_pago_efectivo(request, reserva_id):
 @login_required
 @user_passes_test(es_admin)
 def admin_secretarias(request):
-    group_secretaria, _ = Group.objects.get_or_create(name="secretaria")
+    group_secretaria, _ = Group.objects.get_or_create(name=GROUP_SECRETARIA)
 
     if request.method == "POST":
         username = (request.POST.get("username") or "").strip()
@@ -1888,10 +2150,10 @@ def admin_secretarias(request):
         email = (request.POST.get("email") or "").strip().lower()
 
         if not username or not password:
-            messages.error(request, "Usuario y contraseña son obligatorios.")
+            messages.error(request, "Usuario y contraseÃ±a son obligatorios.")
             return redirect("admin_secretarias")
         if len(password) < 8:
-            messages.error(request, "La contraseña debe tener mínimo 8 caracteres.")
+            messages.error(request, "La contraseÃ±a debe tener mÃ­nimo 8 caracteres.")
             return redirect("admin_secretarias")
         if User.objects.filter(username__iexact=username).exists():
             messages.error(request, "Ese usuario ya existe.")
@@ -1906,7 +2168,7 @@ def admin_secretarias(request):
             is_staff=False,
         )
         user.groups.add(group_secretaria)
-        messages.success(request, f"Secretaria '{username}' creada con éxito.")
+        messages.success(request, f"Secretaria '{username}' creada con Ã©xito.")
         return redirect("admin_secretarias")
 
     secretarias = group_secretaria.user_set.all().order_by("username")
@@ -1923,7 +2185,7 @@ def toggle_secretaria_estado(request, user_id):
     if request.method != "POST":
         return redirect("admin_secretarias")
 
-    group_secretaria = Group.objects.filter(name="secretaria").first()
+    group_secretaria = Group.objects.filter(name=GROUP_SECRETARIA).first()
     secretaria = get_object_or_404(User, id=user_id)
     if not group_secretaria or not secretaria.groups.filter(id=group_secretaria.id).exists():
         messages.error(request, "El usuario seleccionado no pertenece al rol secretaria.")
@@ -1942,7 +2204,7 @@ def eliminar_secretaria(request, user_id):
     if request.method != "POST":
         return redirect("admin_secretarias")
 
-    group_secretaria = Group.objects.filter(name="secretaria").first()
+    group_secretaria = Group.objects.filter(name=GROUP_SECRETARIA).first()
     secretaria = get_object_or_404(User, id=user_id)
     if not group_secretaria or not secretaria.groups.filter(id=group_secretaria.id).exists():
         messages.error(request, "El usuario seleccionado no pertenece al rol secretaria.")
@@ -1959,7 +2221,7 @@ def reset_secretaria_password(request, user_id):
     if request.method != "POST":
         return redirect("admin_secretarias")
 
-    group_secretaria = Group.objects.filter(name="secretaria").first()
+    group_secretaria = Group.objects.filter(name=GROUP_SECRETARIA).first()
     secretaria = get_object_or_404(User, id=user_id)
     if not group_secretaria or not secretaria.groups.filter(id=group_secretaria.id).exists():
         messages.error(request, "El usuario seleccionado no pertenece al rol secretaria.")
@@ -1967,10 +2229,11 @@ def reset_secretaria_password(request, user_id):
 
     new_password = (request.POST.get("new_password") or "").strip()
     if len(new_password) < 8:
-        messages.error(request, "La nueva contraseña debe tener mínimo 8 caracteres.")
+        messages.error(request, "La nueva contraseÃ±a debe tener mÃ­nimo 8 caracteres.")
         return redirect("admin_secretarias")
 
     secretaria.set_password(new_password)
     secretaria.save(update_fields=["password"])
-    messages.success(request, f"Contraseña actualizada para '{secretaria.username}'.")
+    messages.success(request, f"ContraseÃ±a actualizada para '{secretaria.username}'.")
     return redirect("admin_secretarias")
+

@@ -231,3 +231,84 @@ def generar_ticket_pdf(reserva, empresa=None):
     p.save()
     buffer.seek(0)
     return buffer
+
+
+def generar_actividad_dia_pdf(titulo, fecha, items, resumen):
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+
+    color_primary = colors.HexColor("#0F172A")
+    color_border = colors.HexColor("#CBD5E1")
+    color_light = colors.HexColor("#F8FAFC")
+
+    margin_x = 34
+    y_top = height - 42
+
+    p.setFillColor(color_primary)
+    p.roundRect(20, height - 118, width - 40, 88, 12, fill=1, stroke=0)
+    p.setFillColor(colors.white)
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(margin_x, height - 66, "REPORTE DE ACTIVIDAD DIARIA")
+    p.setFont("Helvetica", 11)
+    p.drawString(margin_x, height - 84, str(titulo))
+    p.drawRightString(width - margin_x, height - 84, f"Fecha: {fecha.strftime('%d/%m/%Y')}")
+    p.drawRightString(width - margin_x, height - 100, f"Registros: {resumen.get('total_registros', 0)}")
+
+    data = [["Tipo", "Ref", "Secretaria", "Detalle", "Estado", "Hora", "Monto"]]
+    for item in items:
+        hora = item["dt"].strftime("%I:%M %p")
+        monto = f"${float(item['monto']):.2f}" if item.get("monto") else "-"
+        ref = f"#{int(item['id']):05d}"
+        detalle = f"{item.get('titulo', '')} | {item.get('tour', '')}"
+        usuario = str(item.get("usuario", "-"))
+        data.append([
+            str(item.get("tipo", "")).upper(),
+            ref,
+            usuario,
+            detalle,
+            str(item.get("estado", "")).upper(),
+            hora,
+            monto,
+        ])
+
+    if len(data) == 1:
+        data.append(["-", "-", "-", "No hay actividad para esta fecha.", "-", "-", "-"])
+
+    data.append(["", "", "", "", "", "TOTAL VENTAS", f"${float(resumen.get('total_ventas', 0)):,.2f}"])
+
+    row_heights = [22] + [20] * (len(data) - 2) + [24]
+    table = Table(data, colWidths=[50, 55, 80, 160, 80, 60, 65], rowHeights=row_heights)
+    style = [
+        ("BACKGROUND", (0, 0), (-1, 0), color_primary),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("GRID", (0, 0), (-1, -2), 0.5, color_border),
+        ("ALIGN", (0, 0), (2, -1), "CENTER"),
+        ("ALIGN", (5, 0), (6, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("FONTNAME", (5, -1), (6, -1), "Helvetica-Bold"),
+        ("BACKGROUND", (0, -1), (-1, -1), color_light),
+        ("LINEABOVE", (0, -1), (-1, -1), 1, color_primary),
+    ]
+    table.setStyle(TableStyle(style))
+
+    table_h = sum(row_heights)
+    y_table = y_top - 110 - table_h
+    if y_table < 70:
+        y_table = 70
+    table.wrapOn(p, margin_x, y_table)
+    table.drawOn(p, margin_x, y_table)
+
+    p.setStrokeColor(color_border)
+    p.line(margin_x, 52, width - margin_x, 52)
+    p.setFillColor(colors.HexColor("#64748B"))
+    p.setFont("Helvetica", 8)
+    p.drawString(margin_x, 40, "Reporte generado desde el panel de gestion.")
+    p.drawRightString(width - margin_x, 40, "TortugaTur")
+
+    p.showPage()
+    p.save()
+    buffer.seek(0)
+    return buffer

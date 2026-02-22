@@ -19,6 +19,12 @@
     
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div class="lg:col-span-1">
+            {% if solo_lectura %}
+            <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 mb-4 text-sm font-semibold">
+                Modo solo lectura para secretaria. Puedes consultar destinos, pero no crear, editar ni eliminar.
+            </div>
+            {% endif %}
+            {% if not solo_lectura %}
             <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
                 <h2 class="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
                     <span class="material-icons text-primary">add_location_alt</span>
@@ -34,6 +40,7 @@
                     </button>
                 </form>
             </div>
+            {% endif %}
         </div>
 
         <div class="lg:col-span-2">
@@ -58,6 +65,7 @@
                             </td>
                             <td class="px-8 py-5">
                                 <div class="flex items-center justify-center gap-3">
+                                    {% if not solo_lectura %}
                                     <a href="{% url 'editar_destino' destino.id %}" 
                                        class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-all" 
                                        title="Editar">
@@ -72,6 +80,9 @@
                                             <span class="material-icons text-lg">delete_outline</span>
                                         </button>
                                     </form>
+                                    {% else %}
+                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Solo lectura</span>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>

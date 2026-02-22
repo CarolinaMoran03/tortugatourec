@@ -72,6 +72,12 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Tour Creation Form -->
             <div class="lg:col-span-1">
+                {% if solo_lectura %}
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 mb-4 text-sm font-semibold">
+                    Modo solo lectura para secretaria. Puedes consultar tours y calendario, pero no crear, editar ni eliminar.
+                </div>
+                {% endif %}
+                {% if not solo_lectura %}
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 sticky top-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
@@ -105,6 +111,7 @@
                         </button>
                     </form>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Tours List -->
@@ -174,6 +181,7 @@
                                     </td>
                                     <td class="p-5">
                                         <div class="flex gap-2">
+                                            {% if not solo_lectura %}
                                             <a href="{% url 'editar_tour' tour.id %}"
                                                 class="inline-flex items-center px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-primary transition"
                                                 title="Editar este tour">
@@ -190,6 +198,9 @@
                                                     <span class="material-icons text-xs mr-1">delete</span> Borrar
                                                 </button>
                                             </form>
+                                            {% else %}
+                                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Solo lectura</span>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -222,10 +233,12 @@
                                     salidas programadas</p>
                             </div>
                             <div class="flex gap-3">
+                                {% if not solo_lectura %}
                                 <a href="{% url 'crear_salida' %}"
                                     class="bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-white hover:text-primary transition-all shadow-lg shadow-primary/20">
                                     Programar Salida
                                 </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
