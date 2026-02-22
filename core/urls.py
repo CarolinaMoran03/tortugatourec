@@ -34,6 +34,7 @@ urlpatterns = [
     path("panel/tours/eliminar/<int:pk>/", views.eliminar_tour, name="eliminar_tour"),
     path("panel/galeria/", views.panel_galeria, name="panel_galeria"),
     path("panel/galeria/eliminar/<int:pk>/", views.eliminar_galeria, name="eliminar_galeria"),
+    path("panel/empresa/", views.empresa_config, name="empresa_config"),
     path("panel/perfil/", views.perfil_admin, name="perfil_admin"),
     path("panel/agencias/", views.admin_agencias, name="admin_agencias"),
     path("panel/agencias/nueva/", views.crear_agencia, name="crear_agencia"),
@@ -42,6 +43,7 @@ urlpatterns = [
     path("panel/secretaria/reservar/", views.secretaria_reservar, name="secretaria_reservar"),
     path("panel/secretarias/<int:user_id>/toggle/", views.toggle_secretaria_estado, name="toggle_secretaria_estado"),
     path("panel/secretarias/<int:user_id>/eliminar/", views.eliminar_secretaria, name="eliminar_secretaria"),
+    path("panel/secretarias/<int:user_id>/reset-password/", views.reset_secretaria_password, name="reset_secretaria_password"),
 
     path('registro/', views.registro, name='registro'),
     path('login/', views.vista_login, name='login'),

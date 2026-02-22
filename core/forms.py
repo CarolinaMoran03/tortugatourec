@@ -177,7 +177,7 @@ class ContactoForm(forms.Form):
     asunto = forms.ChoiceField(choices=OPCIONES_ASUNTO)
     mensaje = forms.CharField(widget=forms.Textarea)
 
-from .models import Galeria
+from .models import Galeria, EmpresaConfig
 
 class GaleriaForm(forms.ModelForm):
     class Meta:
@@ -187,4 +187,17 @@ class GaleriaForm(forms.ModelForm):
             'tour': forms.Select(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary'}),
             'imagen': forms.ClearableFileInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary'}),
             'imagen_url': forms.URLInput(attrs={'class': 'w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary', 'placeholder': 'https://link...'}),
+        }
+
+
+class EmpresaConfigForm(forms.ModelForm):
+    class Meta:
+        model = EmpresaConfig
+        fields = ["nombre_empresa", "ruc", "direccion", "telefono", "correo"]
+        widgets = {
+            "nombre_empresa": forms.TextInput(attrs={"class": "w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary"}),
+            "ruc": forms.TextInput(attrs={"class": "w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary"}),
+            "direccion": forms.TextInput(attrs={"class": "w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary"}),
+            "telefono": forms.TextInput(attrs={"class": "w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary"}),
+            "correo": forms.EmailInput(attrs={"class": "w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-primary"}),
         }

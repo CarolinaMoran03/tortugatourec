@@ -58,7 +58,7 @@ class SalidaTour(models.Model):
 
     def __str__(self):
         # Mostramos la hora en el string para identificarla en el admin
-        hora_str = self.hora.strftime('%H:%M') if self.hora else "Sin hora"
+        hora_str = self.hora.strftime('%I:%M %p') if self.hora else "Sin hora"
         return f"{self.tour.nombre} - {self.fecha} ({hora_str})"
 
     def hay_cupo(self, adultos, ninos):
@@ -282,3 +282,18 @@ class Galeria(models.Model):
 
         except Exception as e:
             print(f"Error al aplicar marca de agua: {e}")
+
+
+class EmpresaConfig(models.Model):
+    nombre_empresa = models.CharField(max_length=150, default="TortugaTur")
+    ruc = models.CharField(max_length=30, blank=True, default="")
+    direccion = models.CharField(max_length=255, blank=True, default="")
+    telefono = models.CharField(max_length=50, blank=True, default="")
+    correo = models.EmailField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "Configuracion de Empresa"
+        verbose_name_plural = "Configuracion de Empresa"
+
+    def __str__(self):
+        return f"{self.nombre_empresa} ({self.ruc or 'Sin RUC'})"

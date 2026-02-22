@@ -1,159 +1,231 @@
-﻿from io import BytesIO
+from io import BytesIO
+import hashlib
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.graphics.barcode import code128
 from reportlab.platypus import Table, TableStyle
 
 
 def _fmt_money(value):
     try:
-        # Formato profesional: $ 1,500.00 USD
         return f"$ {float(value):,.2f} USD"
     except (TypeError, ValueError):
         return "$ 0.00 USD"
 
 
-def generar_ticket_pdf(reserva):
+def _safe_text(value, default="-"):
+    if value is None:
+        return default
+    text = str(value).strip()
+    return text if text else default
+
+
+def _access_key(reserva, empresa_ruc):
+    seed = f"{empresa_ruc}|{reserva.id}|{reserva.fecha_reserva.isoformat()}|{reserva.total_pagar}"
+    digest = hashlib.sha1(seed.encode("utf-8")).hexdigest().upper()
+    return f"{reserva.fecha_reserva.strftime('%Y%m%d')}{digest[:24]}"
+
+
+def generar_ticket_pdf(reserva, empresa=None):
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
 
-    # Paleta Original Aceptada
-    color_primario = colors.HexColor("#0F172A")
-    color_secundario = colors.HexColor("#0EA5A5")
-    color_claro = colors.HexColor("#F8FAFC")
-    color_borde = colors.HexColor("#CBD5E1")
-    color_texto = colors.HexColor("#0F172A")
+    color_primary = colors.HexColor("#0F172A")
+    color_secondary = colors.HexColor("#0EA5A5")
+    color_light = colors.HexColor("#F8FAFC")
+    color_border = colors.HexColor("#CBD5E1")
+    color_text = colors.HexColor("#0F172A")
+    color_muted = colors.HexColor("#64748B")
 
-    margen_x = 40
+    margin_x = 34
 
-    # Encabezado
-    p.setFillColor(color_primario)
-    p.roundRect(20, height - 120, width - 40, 90, 12, fill=1, stroke=0)
+    empresa_nombre = "TortugaTur"
+    empresa_ruc = ""
+    empresa_direccion = ""
+    empresa_telefono = ""
+    empresa_correo = ""
+    if empresa is not None:
+        empresa_nombre = getattr(empresa, "nombre_empresa", "") or empresa_nombre
+        empresa_ruc = getattr(empresa, "ruc", "") or ""
+        empresa_direccion = getattr(empresa, "direccion", "") or ""
+        empresa_telefono = getattr(empresa, "telefono", "") or ""
+        empresa_correo = getattr(empresa, "correo", "") or ""
+
+    hora_salida = reserva.salida.hora.strftime("%I:%M %p") if reserva.salida.hora else "Por definir"
+    fecha_emision = reserva.fecha_reserva.strftime("%d/%m/%Y %I:%M %p")
+    clave_acceso = _access_key(reserva, empresa_ruc)
+    estado_text = (reserva.estado or "pendiente").upper()
+
+    # Header
+    p.setFillColor(color_primary)
+    p.roundRect(20, height - 128, width - 40, 100, 12, fill=1, stroke=0)
 
     p.setFillColor(colors.white)
     p.setFont("Helvetica-Bold", 22)
-    p.drawString(margen_x, height - 65, "TORTUGATOUR")
+    p.drawString(margin_x, height - 66, empresa_nombre.upper())
 
-    p.setFont("Helvetica", 10)
-    p.drawString(margen_x, height - 83, "RUC: 1792345678001 | Agencia de Viajes")
+    p.setFont("Helvetica-Bold", 10)
+    if empresa_ruc:
+        p.drawString(margin_x, height - 84, f"RUC: {empresa_ruc}")
+    else:
+        p.drawString(margin_x, height - 84, "RUC: No configurado")
+
+    p.setFont("Helvetica", 9)
+    p.drawString(margin_x, height - 98, f"Direccion: {_safe_text(empresa_direccion)}")
+    p.drawString(margin_x, height - 110, f"Telefono: {_safe_text(empresa_telefono)}")
+    p.drawString(margin_x, height - 122, f"Correo: {_safe_text(empresa_correo)}")
 
     p.setFont("Helvetica-Bold", 13)
-    p.drawRightString(width - margen_x, height - 62, "VOUCHER DE RESERVA")
+    p.drawRightString(width - margin_x, height - 58, "COMPROBANTE DE RESERVA")
     p.setFont("Helvetica", 11)
-    p.drawRightString(width - margen_x, height - 82, f"No. {reserva.id:06d}")
+    p.drawRightString(width - margin_x, height - 76, f"No: {reserva.id:06d}")
+    p.drawRightString(width - margin_x, height - 92, f"Emision: {fecha_emision}")
+    p.drawRightString(width - margin_x, height - 108, f"Estado: {estado_text}")
 
-    # Tarjetas de información
-    y_info = height - 255
-    tarjeta_h = 110
-    tarjeta_w = (width - 60 - 20) / 2
+    # Top blocks
+    left_w = 312
+    right_w = width - (margin_x * 2) - left_w - 14
+    block_h = 150
+    top_y = height - 298
 
-    # Cliente
-    p.setFillColor(color_claro)
-    p.setStrokeColor(color_borde)
-    p.roundRect(20, y_info, tarjeta_w, tarjeta_h, 10, fill=1, stroke=1)
+    p.setFillColor(color_light)
+    p.setStrokeColor(color_border)
+    p.roundRect(margin_x, top_y, left_w, block_h, 10, fill=1, stroke=1)
 
-    p.setFillColor(color_primario)
-    p.setFont("Helvetica-Bold", 11)
-    p.drawString(30, y_info + 87, "DATOS DEL CLIENTE")
-    p.setStrokeColor(color_secundario)
-    p.setLineWidth(1)
-    p.line(30, y_info + 82, 170, y_info + 82)
+    p.setFillColor(color_primary)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(margin_x + 12, top_y + block_h - 20, "DATOS DE CLIENTE")
+    p.setStrokeColor(color_secondary)
+    p.line(margin_x + 12, top_y + block_h - 24, margin_x + left_w - 12, top_y + block_h - 24)
 
-    p.setFillColor(color_texto)
-    p.setFont("Helvetica", 10)
-    p.drawString(30, y_info + 62, f"Nombre: {reserva.nombre} {reserva.apellidos}")
-    p.drawString(30, y_info + 46, f"Identificacion: {reserva.identificacion}")
-    p.drawString(30, y_info + 30, f"Email: {reserva.correo}")
+    p.setFillColor(color_text)
+    p.setFont("Helvetica", 9.5)
+    nombre_cliente = f"{_safe_text(reserva.nombre)} {_safe_text(reserva.apellidos, '')}".strip()
+    p.drawString(margin_x + 12, top_y + block_h - 42, f"Nombre: {nombre_cliente}")
+    p.drawString(margin_x + 12, top_y + block_h - 57, f"Identificacion: {_safe_text(reserva.identificacion)}")
+    p.drawString(margin_x + 12, top_y + block_h - 72, f"Telefono: {_safe_text(reserva.telefono)}")
+    p.drawString(margin_x + 12, top_y + block_h - 87, f"Correo: {_safe_text(reserva.correo)}")
+    p.drawString(margin_x + 12, top_y + block_h - 102, f"Fecha de reserva: {reserva.fecha_reserva.strftime('%d/%m/%Y')}")
 
-    # Viaje
-    x_viaje = 20 + tarjeta_w + 20
-    p.setFillColor(color_claro)
-    p.setStrokeColor(color_borde)
-    p.roundRect(x_viaje, y_info, tarjeta_w, tarjeta_h, 10, fill=1, stroke=1)
+    x_right = margin_x + left_w + 14
+    p.setFillColor(color_light)
+    p.setStrokeColor(color_border)
+    p.roundRect(x_right, top_y, right_w, block_h, 10, fill=1, stroke=1)
 
-    p.setFillColor(color_primario)
-    p.setFont("Helvetica-Bold", 11)
-    p.drawString(x_viaje + 10, y_info + 87, "DETALLES DEL VIAJE")
-    p.setStrokeColor(color_secundario)
-    p.line(x_viaje + 10, y_info + 82, x_viaje + 160, y_info + 82)
+    p.setFillColor(color_primary)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(x_right + 10, top_y + block_h - 20, "CLAVE DE ACCESO")
+    p.setStrokeColor(color_secondary)
+    p.line(x_right + 10, top_y + block_h - 24, x_right + right_w - 10, top_y + block_h - 24)
 
-    p.setFillColor(color_texto)
-    p.setFont("Helvetica", 10)
-    p.drawString(x_viaje + 10, y_info + 62, f"Tour: {reserva.salida.tour.nombre}")
-    p.drawString(x_viaje + 10, y_info + 46, f"Destino: {reserva.salida.tour.destino.nombre}")
-    
-    hora_str = reserva.salida.hora.strftime('%H:%M') if reserva.salida.hora else "Por definir"
-    p.drawString(x_viaje + 10, y_info + 30, f"Salida: {reserva.salida.fecha} a las {hora_str}")
+    # Fit barcode to the available width so it never overflows the access box.
+    barcode = code128.Code128(clave_acceso, barHeight=32, barWidth=0.72)
+    barcode_x = x_right + 10
+    barcode_y = top_y + 72
+    max_barcode_width = right_w - 20
+    if barcode.width > max_barcode_width:
+        scale_x = max_barcode_width / float(barcode.width)
+        p.saveState()
+        p.translate(barcode_x, barcode_y)
+        p.scale(scale_x, 1)
+        barcode.drawOn(p, 0, 0)
+        p.restoreState()
+    else:
+        barcode.drawOn(p, barcode_x, barcode_y)
+    p.setFillColor(color_muted)
+    p.setFont("Helvetica", 7.5)
+    p.drawString(x_right + 10, top_y + 64, clave_acceso)
 
-    # Tabla de conceptos
+    p.setFillColor(color_text)
+    p.setFont("Helvetica", 9)
+    p.drawString(x_right + 10, top_y + 44, f"Tour: {_safe_text(reserva.salida.tour.nombre)}")
+    p.drawString(x_right + 10, top_y + 30, f"Destino: {_safe_text(reserva.salida.tour.destino.nombre)}")
+    p.drawString(
+        x_right + 10,
+        top_y + 16,
+        f"Salida: {reserva.salida.fecha.strftime('%d/%m/%Y')} {hora_salida}",
+    )
+
+    # Detail table
     precio_adulto = reserva.salida.tour.precio_adulto_final()
     precio_nino = reserva.salida.tour.precio_nino_final()
-    
     subtotal_adultos = reserva.adultos * precio_adulto
     subtotal_ninos = reserva.ninos * precio_nino
 
-    data = [["Descripción", "Cantidad", "Precio Unit.", "Subtotal"]]
-    
+    data = [["Codigo", "Descripcion", "Cant.", "P. Unitario", "Subtotal"]]
     if reserva.adultos > 0:
         data.append([
-            f"Adultos - {reserva.salida.tour.nombre}",
+            "A001",
+            f"Adulto - {reserva.salida.tour.nombre}",
             str(reserva.adultos),
-            _fmt_money(precio_adulto),
-            _fmt_money(subtotal_adultos),
+            f"{float(precio_adulto):.2f}",
+            f"{float(subtotal_adultos):.2f}",
         ])
-        
     if reserva.ninos > 0:
         data.append([
-            "Niños",
+            "N001",
+            "Nino (tarifa segun edad)",
             str(reserva.ninos),
-            _fmt_money(precio_nino),
-            _fmt_money(subtotal_ninos),
+            f"{float(precio_nino):.2f}",
+            f"{float(subtotal_ninos):.2f}",
         ])
+    data.append(["", "", "", "TOTAL A COBRAR USD", f"{float(reserva.total_pagar):.2f}"])
 
-    data.append(["", "", "TOTAL PAGADO", _fmt_money(reserva.total_pagar)])
-
-    # Alturas dinámicas
-    row_heights = [28] + [24] * (len(data) - 2) + [30]
-    table = Table(data, colWidths=[280, 70, 90, 90], rowHeights=row_heights)
-    
-    # Grid dinámico dependiendo de la cantidad de filas
-    estilo = [
-        ("BACKGROUND", (0, 0), (-1, 0), color_primario),
+    row_heights = [24] + [22] * (len(data) - 2) + [26]
+    table = Table(data, colWidths=[64, 246, 50, 90, 90], rowHeights=row_heights)
+    style = [
+        ("BACKGROUND", (0, 0), (-1, 0), color_primary),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, 0), 10),
-        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-        ("ALIGN", (0, 1), (0, -1), "LEFT"),
-        ("ALIGN", (3, 1), (3, -1), "RIGHT"),
+        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+        ("ALIGN", (2, 0), (2, -1), "CENTER"),
+        ("ALIGN", (3, 0), (4, -1), "RIGHT"),
+        ("ALIGN", (1, 0), (1, -1), "LEFT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, len(data) - 2), 0.5, color_borde),
-        ("LINEABOVE", (0, len(data) - 1), (-1, len(data) - 1), 1, color_secundario),
-        ("FONTNAME", (2, len(data) - 1), (3, len(data) - 1), "Helvetica-Bold"),
-        ("FONTSIZE", (3, len(data) - 1), (3, len(data) - 1), 13),
-        ("TEXTCOLOR", (2, len(data) - 1), (3, len(data) - 1), color_primario),
-        ("BACKGROUND", (0, 1), (-1, len(data) - 2), colors.white),
-        ("BACKGROUND", (0, len(data) - 1), (-1, len(data) - 1), color_claro),
+        ("GRID", (0, 0), (-1, -2), 0.5, color_border),
+        ("LINEABOVE", (0, -1), (-1, -1), 1, color_secondary),
+        ("FONTNAME", (3, -1), (4, -1), "Helvetica-Bold"),
+        ("TEXTCOLOR", (3, -1), (4, -1), color_primary),
+        ("BACKGROUND", (0, -1), (-1, -1), color_light),
     ]
-    
-    table.setStyle(TableStyle(estilo))
+    table.setStyle(TableStyle(style))
 
-    # Center placement
     table_height = sum(row_heights)
-    current_y = height - 280 - table_height
-    table.wrapOn(p, margen_x, current_y)
-    table.drawOn(p, margen_x, current_y)
+    table_y = top_y - 18 - table_height
+    table.wrapOn(p, margin_x, table_y)
+    table.drawOn(p, margin_x, table_y)
 
-    # Pie de pagina legal
-    p.setStrokeColor(color_borde)
-    p.line(margen_x, 70, width - margen_x, 70)
-    p.setFillColor(colors.HexColor("#475569"))
-    p.setFont("Helvetica-Oblique", 8)
+    # Summary box
+    summary_y = table_y - 72
+    p.setStrokeColor(color_border)
+    p.roundRect(width - margin_x - 210, summary_y, 210, 62, 8, fill=0, stroke=1)
+    p.setFont("Helvetica", 9)
+    p.setFillColor(color_muted)
+    p.drawString(width - margin_x - 198, summary_y + 42, "Subtotal")
+    p.drawString(width - margin_x - 198, summary_y + 28, "Descuento")
+    p.drawString(width - margin_x - 198, summary_y + 14, "Total")
+    p.setFillColor(color_text)
+    total_float = float(reserva.total_pagar)
+    p.drawRightString(width - margin_x - 10, summary_y + 42, f"{total_float:.2f} USD")
+    p.drawRightString(width - margin_x - 10, summary_y + 28, "0.00 USD")
+    p.setFont("Helvetica-Bold", 10)
+    p.drawRightString(width - margin_x - 10, summary_y + 14, f"{total_float:.2f} USD")
+
+    # Footer
+    p.setStrokeColor(color_border)
+    p.line(margin_x, 52, width - margin_x, 52)
+    p.setFillColor(color_muted)
+    p.setFont("Helvetica-Oblique", 8.3)
     p.drawString(
-        margen_x,
-        56,
-        "Este documento es un comprobante de reserva general y no constituye una factura legal fiscal.",
+        margin_x,
+        40,
+        "Documento de uso interno para reserva de tour. No reemplaza comprobante tributario oficial.",
     )
+    p.setFont("Helvetica", 8)
+    p.drawRightString(width - margin_x, 40, f"Generado: {fecha_emision}")
 
     p.showPage()
     p.save()

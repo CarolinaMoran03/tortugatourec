@@ -78,13 +78,15 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 style="margin:0; letter-spacing:-1px;">TORTUGATOUR</h1>
-            <p style="margin:6px 0 0 0; opacity:0.7; font-size:14px;">Tu próxima aventura comienza aquí</p>
+            <h1 style="margin:0; letter-spacing:-1px;">{{ empresa.nombre_empresa|default:"TortugaTur"|upper }}</h1>
+            <p style="margin:6px 0 0 0; opacity:0.7; font-size:14px;">
+                {% if empresa.ruc %}RUC: {{ empresa.ruc }}{% else %}Tu proxima aventura comienza aqui{% endif %}
+            </p>
         </div>
         <div class="content">
             <div class="status-badge">Reserva confirmada y pagada</div>
-            <h2 style="color:#0f172a; margin-top:14px;">¡Hola, {{ reserva.nombre }}!</h2>
-            <p>Gracias por confiar en <strong>TortugaTur</strong>. Tu reserva quedó registrada y el pago fue confirmado.</p>
+            <h2 style="color:#0f172a; margin-top:14px;">Hola, {{ reserva.nombre }}!</h2>
+            <p>Gracias por confiar en <strong>{{ empresa.nombre_empresa|default:"TortugaTur" }}</strong>. Tu reserva quedo registrada y el pago fue confirmado.</p>
 
             <div class="tour-box">
                 <p class="label">Referencia</p>
@@ -96,17 +98,17 @@
                 <p class="label" style="margin-top:12px;">Fecha y hora</p>
                 <p class="value">
                     {{ reserva.salida.fecha|date:"d M Y" }}
-                    {% if reserva.salida.hora %} - {{ reserva.salida.hora|time:"H:i" }}{% endif %}
+                    {% if reserva.salida.hora %} - {{ reserva.salida.hora|time:"h:i A" }}{% endif %}
                 </p>
 
                 <p class="label" style="margin-top:12px;">Pasajeros</p>
-                <p class="value">{{ reserva.adultos }} Adulto(s){% if reserva.ninos %}, {{ reserva.ninos }} Niño(s){% endif %}</p>
+                <p class="value">{{ reserva.adultos }} Adulto(s){% if reserva.ninos %}, {{ reserva.ninos }} Nino(s){% endif %}</p>
 
                 <p class="label" style="margin-top:12px;">Total pagado</p>
                 <p class="value" style="font-size:18px;">${{ reserva.total_pagar }}</p>
             </div>
 
-            <p>Adjuntamos tu <strong>voucher oficial</strong> en PDF. Preséntalo al momento del check-in.</p>
+            <p>Adjuntamos tu <strong>voucher oficial</strong> en PDF. Presentalo al momento del check-in.</p>
 
             <center>
                 <a href="{{ site_url }}{% url 'ticket_reserva' reserva.id %}" class="button">Ver mi reserva</a>
@@ -116,8 +118,8 @@
             </center>
         </div>
         <div class="footer">
-            <p>Soporte: {{ agencia_email|default:"info@tortugatour.com" }}</p>
-            <p>&copy; 2026 TortugaTur Agency. Todos los derechos reservados.</p>
+            <p>Soporte: {{ empresa.correo|default:agencia_email|default:"info@tortugatour.com" }}</p>
+            <p>&copy; 2026 {{ empresa.nombre_empresa|default:"TortugaTur" }}. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

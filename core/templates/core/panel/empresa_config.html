@@ -1,0 +1,53 @@
+{% extends "core/base.html" %}
+{% block title %}Datos de Empresa | TortugaTur{% endblock %}
+
+{% block content %}
+<div class="bg-slate-50 min-h-screen py-10">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900">Datos de Empresa</h1>
+                <p class="text-sm text-slate-500">Configura nombre fiscal, RUC y datos de contacto.</p>
+            </div>
+            <a href="{% url 'panel_admin' %}"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/30 transition-all font-bold text-sm shadow-sm">
+                <span class="material-icons text-base">arrow_back</span>
+                Panel
+            </a>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">Nombre de empresa</label>
+                    {{ form.nombre_empresa }}
+                </div>
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">RUC</label>
+                    {{ form.ruc }}
+                </div>
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">Direccion</label>
+                    {{ form.direccion }}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">Telefono</label>
+                        {{ form.telefono }}
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">Correo</label>
+                        {{ form.correo }}
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full h-11 bg-slate-900 text-white rounded-xl font-black text-xs tracking-widest hover:bg-primary transition">
+                    GUARDAR DATOS
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

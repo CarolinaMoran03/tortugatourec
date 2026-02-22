@@ -236,7 +236,7 @@
                                     </span>
                                 </div>
                             </div>
-                            <p class="text-xs text-slate-300">{{ reserva.fecha_reserva|date:"d de F de Y - H:i" }}</p>
+                            <p class="text-xs text-slate-300">{{ reserva.fecha_reserva|date:"d de F de Y - h:i A" }}</p>
                         </div>
 
                         <!-- Detalles del Pasajero -->
@@ -256,7 +256,7 @@
                             <p class="text-xs text-slate-600 mt-2">
                                 <span class="material-icons text-sm align-middle">calendar_today</span>
                                 {{ reserva.salida.fecha|date:"d/m/Y" }}
-                                {% if reserva.salida.hora %}· {{ reserva.salida.hora|time:"H:i" }}{% endif %}
+                                {% if reserva.salida.hora %}· {{ reserva.salida.hora|time:"h:i A" }}{% endif %}
                             </p>
                         </div>
 
@@ -282,6 +282,50 @@
                                 <p class="text-3xl font-black text-emerald-600">${{ reserva.total_pagar|floatformat:2 }}
                                 </p>
                             </div>
+
+                            {% if reserva.estado == 'pendiente' %}
+                            <div class="mt-4 grid grid-cols-2 gap-2">
+                                <button type="button"
+                                    onclick="toggleEditarReserva('{{ reserva.id }}')"
+                                    class="h-10 rounded-xl bg-amber-100 text-amber-700 font-black text-xs tracking-widest hover:bg-amber-200 transition">
+                                    EDITAR
+                                </button>
+                                <form method="post" onsubmit="return confirm('¿Cancelar esta reserva pendiente?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="cancelar_reserva_pendiente">
+                                    <input type="hidden" name="reserva_id" value="{{ reserva.id }}">
+                                    <button type="submit"
+                                        class="w-full h-10 rounded-xl bg-red-100 text-red-700 font-black text-xs tracking-widest hover:bg-red-200 transition">
+                                        CANCELAR
+                                    </button>
+                                </form>
+                            </div>
+
+                            <form id="editar-reserva-{{ reserva.id }}" method="post"
+                                class="hidden mt-3 p-3 rounded-xl border border-slate-200 bg-white space-y-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="editar_reserva_pendiente">
+                                <input type="hidden" name="reserva_id" value="{{ reserva.id }}">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="text" name="nombre" value="{{ reserva.nombre }}" placeholder="Nombre"
+                                        class="w-full border border-slate-200 rounded-lg p-2 text-sm font-semibold" required>
+                                    <input type="text" name="apellidos" value="{{ reserva.apellidos }}" placeholder="Apellidos"
+                                        class="w-full border border-slate-200 rounded-lg p-2 text-sm font-semibold" required>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="email" name="correo" value="{{ reserva.correo }}" placeholder="Correo"
+                                        class="w-full border border-slate-200 rounded-lg p-2 text-sm font-semibold" required>
+                                    <input type="text" name="telefono" value="{{ reserva.telefono }}" placeholder="Telefono"
+                                        class="w-full border border-slate-200 rounded-lg p-2 text-sm font-semibold" required>
+                                </div>
+                                <input type="text" name="identificacion" value="{{ reserva.identificacion }}" placeholder="Cedula o pasaporte"
+                                    class="w-full border border-slate-200 rounded-lg p-2 text-sm font-semibold" required>
+                                <button type="submit"
+                                    class="w-full h-9 rounded-lg bg-slate-900 text-white font-black text-xs tracking-widest hover:bg-primary transition">
+                                    GUARDAR CAMBIOS
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -316,6 +360,16 @@
                 }
             }
             reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function toggleEditarReserva(reservaId) {
+        const form = document.getElementById(`editar-reserva-${reservaId}`);
+        if (!form) return;
+        form.classList.toggle('hidden');
+        if (!form.classList.contains('hidden')) {
+            const firstInput = form.querySelector('input[name="nombre"]');
+            if (firstInput) firstInput.focus();
         }
     }
 </script>

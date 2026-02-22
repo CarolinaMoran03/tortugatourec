@@ -171,7 +171,7 @@
                                         data-dur="{{ s.duracion|default:tour.duracion|default:'Full Day' }}" {% if
                                         salida_seleccionada and salida_seleccionada==s.id|stringformat:'s' %}selected{%
                                         endif %}>
-                                        {{ s.fecha|date:"d M" }} — {{ s.hora|time:"H:i" }} ({{ s.cupos_disponibles }}
+                                        {{ s.fecha|date:"d M" }} — {{ s.hora|time:"h:i A" }} ({{ s.cupos_disponibles }}
                                         disp.)
                                     </option>
                                     {% endfor %}
@@ -211,6 +211,13 @@
                             </div>
                         </div>
 
+                        <div id="bloqueEdadNino" class="space-y-2 hidden">
+                            <label class="block text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">
+                                Edades de los ninos
+                            </label>
+                            <div id="listaEdadesNinos" class="space-y-2"></div>
+                        </div>
+
                         <div class="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative mt-4">
                             <!-- Currency Selector Integrado (Sin Recarga) -->
                             <div
@@ -238,8 +245,7 @@
                                 class="mt-3 text-[10px] uppercase tracking-widest opacity-60 font-black flex justify-between">
                                 <span>Adulto: <span id="labelMonedaAdulto">{{ currency_code }}</span> <span
                                         id="txtPrecioAdulto">{{ precio_adulto|floatformat:2 }}</span></span>
-                                <span>Niño: <span id="labelMonedaNino">{{ currency_code }}</span> <span
-                                        id="txtPrecioNino">{{ precio_nino|floatformat:2 }}</span></span>
+                                <span>Ninos: <span id="txtPrecioNino">segun su edad</span></span>
                             </div>
 
                             <!-- Nota Dinamica de Pago (solo visible si moneda es diferente a base USD) -->
@@ -372,9 +378,55 @@
     // Tabla de conversiones insertada dinámicamente desde el backend de Python
     const tasasCambio = JSON.parse('{{ currency_rates_json|default:"{}"|safe|escapejs }}');
     const precioAdultoBase = parseFloat("{{ tour.precio_adulto_final }}".replace(',', '.'));
-    const precioNinoBase = parseFloat("{{ tour.precio_nino_final }}".replace(',', '.'));
+    const precioNinoEdad0a2Base = parseFloat("{{ child_price_0_2 }}".replace(',', '.'));
+    const precioNinoEdad3a5Base = parseFloat("{{ child_price_3_5 }}".replace(',', '.'));
+    const precioNinoEdad6MasBase = parseFloat("{{ child_price_normal }}".replace(',', '.'));
 
     const usuarioLogueado = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
+
+    function obtenerPrecioNinoPorEdadEnBase(edad) {
+        if (isNaN(edad) || edad < 0) return 0;
+        if (edad <= 2) return precioNinoEdad0a2Base;
+        if (edad <= 5) return precioNinoEdad3a5Base;
+        return precioNinoEdad6MasBase;
+    }
+
+    function actualizarBloqueEdadNino() {
+        const totalNinos = parseInt(document.getElementById('ninos').value) || 0;
+        const bloqueEdad = document.getElementById('bloqueEdadNino');
+        const lista = document.getElementById('listaEdadesNinos');
+        const edadesActuales = Array.from(document.querySelectorAll('input[name="edades_ninos"]')).map(input => input.value);
+
+        if (totalNinos > 0) {
+            bloqueEdad.classList.remove('hidden');
+            if (lista.childElementCount !== totalNinos) {
+                lista.innerHTML = '';
+                for (let i = 0; i < totalNinos; i++) {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = '0';
+                    input.step = '1';
+                    input.name = 'edades_ninos';
+                    input.placeholder = `Edad nino ${i + 1}`;
+                    input.className = 'w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10';
+                    input.value = edadesActuales[i] || '';
+                    input.addEventListener('input', recalcular);
+                    lista.appendChild(input);
+                }
+            }
+        } else {
+            bloqueEdad.classList.add('hidden');
+            lista.innerHTML = '';
+        }
+    }
+
+    function obtenerEdadesNinos() {
+        return Array.from(document.querySelectorAll('input[name="edades_ninos"]')).map(input => parseInt(input.value));
+    }
+
+    function calcularTotalNinosBase(edadesNinos) {
+        return edadesNinos.reduce((acc, edad) => acc + obtenerPrecioNinoPorEdadEnBase(edad), 0);
+    }
 
     // Modulo de Cambio de Moneda en Vivo (AJAX SIMULADO)
     function cambiarMonedaEnVivo(monedaElegida) {
@@ -384,7 +436,8 @@
 
         // Calcular nuevos precios
         precioAdulto = precioAdultoBase * multiplier;
-        precioNino = precioNinoBase * multiplier;
+        const edadesNinos = obtenerEdadesNinos();
+        precioNino = calcularTotalNinosBase(edadesNinos) * multiplier;
         monedaActualFormato = monedaElegida;
 
         // Actualizar UI Botones
@@ -402,10 +455,8 @@
         document.getElementById('labelMonedaTotal').innerText = monedaElegida;
         document.getElementById('labelMonedaSimbolo').innerText = monedaElegida;
         document.getElementById('labelMonedaAdulto').innerText = monedaElegida;
-        document.getElementById('labelMonedaNino').innerText = monedaElegida;
 
         document.getElementById('txtPrecioAdulto').innerText = precioAdulto.toFixed(2);
-        document.getElementById('txtPrecioNino').innerText = precioNino.toFixed(2);
 
         const avisoPagoBase = document.getElementById('notaPagoBase');
         if (monedaElegida !== monedaBaseDePago) {
@@ -461,8 +512,13 @@
     function recalcular() {
         const ad = parseInt(document.getElementById('adultos').value) || 0;
         const ni = parseInt(document.getElementById('ninos').value) || 0;
+        actualizarBloqueEdadNino();
+        const edadesNinos = obtenerEdadesNinos();
+        const multiplier = parseFloat(tasasCambio[monedaActualFormato]) || 1.0;
+        precioNino = calcularTotalNinosBase(edadesNinos) * multiplier;
+
         const totalPersonas = ad + ni;
-        const totalDinero = (ad * precioAdulto) + (ni * precioNino);
+        const totalDinero = (ad * precioAdulto) + precioNino;
 
         document.getElementById('totalPagar').innerText = totalDinero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         if (totalPersonas > 0) document.getElementById('error-msg').classList.add('hidden');
@@ -492,7 +548,9 @@
         const select = document.getElementById('selectSalida');
         const dateInput = document.getElementById('fechaAgencia');
         const hasDate = (select && select.value) || (dateInput && dateInput.value);
-        const totalGente = (parseInt(document.getElementById('adultos').value) || 0) + (parseInt(document.getElementById('ninos').value) || 0);
+        const totalNinos = parseInt(document.getElementById('ninos').value) || 0;
+        const totalGente = (parseInt(document.getElementById('adultos').value) || 0) + totalNinos;
+        const edadesNinos = obtenerEdadesNinos();
 
         if (!hasDate) {
             mostrarError("Por favor, selecciona una fecha.");
@@ -501,6 +559,19 @@
         if (totalGente === 0) {
             mostrarError("Añade al menos un pasajero.");
             return;
+        }
+
+                if (totalNinos > 0) {
+            if (edadesNinos.length !== totalNinos) {
+                mostrarError("Debes ingresar la edad de cada nino.");
+                return;
+            }
+            for (const edad of edadesNinos) {
+                if (isNaN(edad) || edad < 0) {
+                    mostrarError("Ingresa edades validas para todos los ninos.");
+                    return;
+                }
+            }
         }
 
         if (usuarioLogueado) {

@@ -22,11 +22,25 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from .models import Destino, Tour, SalidaTour, Reserva, Pago, Resena, Ticket
+from .models import Destino, Tour, SalidaTour, Reserva, Pago, Resena, Ticket, EmpresaConfig
 from .utils import generar_ticket_pdf
-from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm, TuristaLoginForm
+from .forms import DestinoForm, TourForm, RegistroTuristaForm, ContactoForm, TuristaLoginForm, EmpresaConfigForm
 
 logger = logging.getLogger(__name__)
+
+CHILD_PRICE_0_2 = Decimal("10.00")
+CHILD_PRICE_3_5 = Decimal("35.00")
+CHILD_PRICE_NORMAL = Decimal("70.00")
+
+
+def _precio_nino_por_edad(edad_nino):
+    if edad_nino is None:
+        return CHILD_PRICE_NORMAL
+    if edad_nino <= 2:
+        return CHILD_PRICE_0_2
+    if edad_nino <= 5:
+        return CHILD_PRICE_3_5
+    return CHILD_PRICE_NORMAL
 
 # ============================================
 # VISTAS PÚBLICAS
@@ -154,9 +168,35 @@ def tour_detalle(request, pk):
             salida_id = request.POST.get("salida")
             adultos = int(request.POST.get("adultos", 0))
             ninos = int(request.POST.get("ninos", 0))
+            edades_ninos_raw = request.POST.getlist("edades_ninos")
             nombre = request.POST.get("nombre", "")
             telefono = request.POST.get("telefono", "")
             identificacion = request.POST.get("identificacion", "")
+            edades_ninos = []
+
+            if ninos > 0:
+                if len(edades_ninos_raw) != ninos:
+                    error_msg = "Debes ingresar la edad de cada nino."
+                    if is_ajax:
+                        return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
+
+                try:
+                    edades_ninos = [int(v) for v in edades_ninos_raw]
+                except (TypeError, ValueError):
+                    error_msg = "Debes ingresar edades validas para los ninos."
+                    if is_ajax:
+                        return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
+
+                if any(edad < 0 for edad in edades_ninos):
+                    error_msg = "La edad del nino no puede ser negativa."
+                    if is_ajax:
+                        return JsonResponse({'error': error_msg}, status=400)
+                    messages.error(request, error_msg)
+                    return redirect('tour_detalle', pk=pk)
 
             # Validaciones
             es_agencia = hasattr(request.user, 'perfil') and request.user.perfil.is_agencia
@@ -241,8 +281,8 @@ def tour_detalle(request, pk):
 
                 # Calcular total a pagar (adulto/niño) referencial
                 precio_adulto = tour.precio_adulto_final()
-                precio_nino = tour.precio_nino_final()
-                total_pagar = (adultos * precio_adulto) + (ninos * precio_nino)
+                total_ninos = sum(_precio_nino_por_edad(edad) for edad in edades_ninos)
+                total_pagar = (adultos * precio_adulto) + total_ninos
 
                 # Calcular fecha límite (15 días a partir de hoy)
                 fecha_limite = timezone.now() + timedelta(days=15)
@@ -298,8 +338,8 @@ def tour_detalle(request, pk):
                 # Flujo normal de Turista
                 # Calcular total a pagar (adulto/niño)
                 precio_adulto = tour.precio_adulto_final()
-                precio_nino = tour.precio_nino_final()
-                total_pagar = (adultos * precio_adulto) + (ninos * precio_nino)
+                total_ninos = sum(_precio_nino_por_edad(edad) for edad in edades_ninos)
+                total_pagar = (adultos * precio_adulto) + total_ninos
 
                 # Crear la reserva con estado PENDIENTE (hasta que pague)
                 reserva = Reserva.objects.create(
@@ -361,6 +401,9 @@ def tour_detalle(request, pk):
         "currency_options": list(getattr(settings, "CURRENCY_RATES", {}).keys()),
         "currency_rates_json": json.dumps(getattr(settings, "CURRENCY_RATES", {})),
         "whatsapp_message": f"Hola, quiero informacion del tour {tour.nombre}",
+        "child_price_0_2": str(CHILD_PRICE_0_2),
+        "child_price_3_5": str(CHILD_PRICE_3_5),
+        "child_price_normal": str(CHILD_PRICE_NORMAL),
     })
 
 @login_required
@@ -391,11 +434,11 @@ def crear_resena(request, pk):
 
 def ticket_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
-    return render(request, "core/ticket.html", {"reserva": reserva})
+    return render(request, "core/ticket.html", {"reserva": reserva, "empresa": _empresa_config()})
 
 def ver_ticket_pdf(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
-    buffer = generar_ticket_pdf(reserva)
+    buffer = generar_ticket_pdf(reserva, _empresa_config())
     return HttpResponse(buffer.getvalue(), content_type='application/pdf')
 
 # ============================================
@@ -463,12 +506,12 @@ def procesar_pago(request):
             
             # Generar y enviar ticket por email
             try:
-                pdf_buffer = generar_ticket_pdf(reserva)
+                pdf_buffer = generar_ticket_pdf(reserva, _empresa_config())
                 pdf_content = pdf_buffer.getvalue()
                 pdf_buffer.close()
                 
                 asunto = f"✅ Confirmación de Reserva #{reserva.id:06d} - TortugaTur"
-                mensaje_html = render_to_string("core/email_ticket.html", {"reserva": reserva})
+                mensaje_html = render_to_string("core/email_ticket.html", {"reserva": reserva, "empresa": _empresa_config()})
                 
                 # Enviar al cliente
                 email_cliente = EmailMessage(
@@ -511,10 +554,37 @@ def panel_admin(request):
     if request.user.is_staff or request.user.is_superuser:
         from .models import Reserva, SalidaTour
         # Consultar las últimas reservas y salidas creadas por algún miembro del rol "secretaria"
-        context['actividad_reservas'] = Reserva.objects.filter(creado_por__groups__name="secretaria").select_related('creado_por', 'salida__tour').order_by('-fecha_reserva')[:8]
+        context['actividad_reservas'] = (
+            Reserva.objects
+            .filter(creado_por__groups__name="secretaria")
+            .exclude(estado="cancelada")
+            .select_related('creado_por', 'salida__tour')
+            .distinct()
+            .order_by('-fecha_reserva')[:8]
+        )
         context['actividad_salidas'] = SalidaTour.objects.filter(creado_por__groups__name="secretaria").select_related('creado_por', 'tour').order_by('-id')[:8]
         
     return render(request, "core/panel/index.html", context)
+
+
+def _empresa_config():
+    empresa, _ = EmpresaConfig.objects.get_or_create(id=1, defaults={"nombre_empresa": "TortugaTur"})
+    return empresa
+
+
+@login_required
+@user_passes_test(es_admin)
+def empresa_config(request):
+    empresa = _empresa_config()
+    if request.method == "POST":
+        form = EmpresaConfigForm(request.POST, instance=empresa)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Datos de empresa actualizados.")
+            return redirect("empresa_config")
+    else:
+        form = EmpresaConfigForm(instance=empresa)
+    return render(request, "core/panel/empresa_config.html", {"form": form})
 
 @login_required
 @user_passes_test(es_admin)
@@ -989,7 +1059,7 @@ def _amount_minor_units(amount):
 
 def _send_ticket_email(reserva):
     try:
-        pdf_buffer = generar_ticket_pdf(reserva)
+        pdf_buffer = generar_ticket_pdf(reserva, _empresa_config())
         pdf_content = pdf_buffer.getvalue()
         pdf_buffer.close()
         subject = f"Confirmacion de Reserva #{reserva.id:06d} - TortugaTur"
@@ -997,6 +1067,7 @@ def _send_ticket_email(reserva):
             "core/email_ticket.html",
             {
                 "reserva": reserva,
+                "empresa": _empresa_config(),
                 "site_url": _site_url(request=None),
                 "whatsapp_number": getattr(settings, "WHATSAPP_NUMBER", ""),
                 "agencia_email": getattr(settings, "AGENCIA_EMAIL", ""),
@@ -1551,6 +1622,42 @@ def perfil_admin(request):
     perfil, _ = UserProfile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
+        accion = (request.POST.get("action") or "").strip()
+
+        if is_secretaria and accion in ["editar_reserva_pendiente", "cancelar_reserva_pendiente"]:
+            reserva_id = request.POST.get("reserva_id")
+            reserva = get_object_or_404(Reserva, id=reserva_id, creado_por=request.user)
+
+            if reserva.estado != "pendiente":
+                messages.error(request, "Solo puedes modificar reservas pendientes.")
+                return redirect("perfil_admin")
+
+            if accion == "cancelar_reserva_pendiente":
+                reserva_ref = reserva.id
+                reserva.delete()
+                messages.success(request, f"Reserva #{reserva_ref:06d} eliminada correctamente.")
+                return redirect("perfil_admin")
+
+            # Editar datos del cliente en reserva pendiente
+            nombre = (request.POST.get("nombre") or "").strip()
+            apellidos = (request.POST.get("apellidos") or "").strip()
+            correo = (request.POST.get("correo") or "").strip().lower()
+            telefono = (request.POST.get("telefono") or "").strip()
+            identificacion = (request.POST.get("identificacion") or "").strip()
+
+            if not all([nombre, apellidos, correo, telefono, identificacion]):
+                messages.error(request, "Completa todos los campos para editar la reserva.")
+                return redirect("perfil_admin")
+
+            reserva.nombre = nombre
+            reserva.apellidos = apellidos
+            reserva.correo = correo
+            reserva.telefono = telefono
+            reserva.identificacion = identificacion
+            reserva.save(update_fields=["nombre", "apellidos", "correo", "telefono", "identificacion"])
+            messages.success(request, f"Reserva #{reserva.id:06d} actualizada correctamente.")
+            return redirect("perfil_admin")
+
         # Info Basica
         request.user.first_name = request.POST.get('first_name', request.user.first_name)
         request.user.last_name = request.POST.get('last_name', request.user.last_name)
@@ -1592,7 +1699,13 @@ def perfil_admin(request):
     total_personas = 0
     
     if is_secretaria:
-        reservas_creadas = Reserva.objects.filter(creado_por=request.user).select_related('salida__tour').order_by('-fecha_reserva')
+        reservas_creadas = (
+            Reserva.objects
+            .filter(creado_por=request.user)
+            .exclude(estado="cancelada")
+            .select_related('salida__tour')
+            .order_by('-fecha_reserva')
+        )
         total_ventas = sum(r.total_pagar for r in reservas_creadas)
         total_personas = sum(r.total_personas() for r in reservas_creadas)
     
@@ -1623,11 +1736,26 @@ def puede_reservar_asistida(user):
 @user_passes_test(puede_reservar_asistida)
 def secretaria_reservar(request):
     destinos = Destino.objects.all().order_by("nombre")
+    todos_los_tours = list(Tour.objects.select_related("destino").all().order_by("nombre"))
+    tours_reserva_directa = {}
     destino_id = request.GET.get("destino", "")
     fecha = request.GET.get("fecha", "")
-    personas = _parse_int(request.GET.get("personas"), 1)
-    if personas < 1:
-        personas = 1
+
+    ahora = timezone.now()
+    fecha_hoy = ahora.date()
+    hora_actual = ahora.time()
+    salidas_directas = (
+        SalidaTour.objects.filter(
+            fecha__gte=fecha_hoy,
+            cupos_disponibles__gt=0,
+        )
+        .select_related("tour", "tour__destino")
+        .order_by("tour__nombre", "fecha", "hora")
+    )
+    for salida in salidas_directas:
+        if salida.fecha == fecha_hoy and salida.hora and salida.hora < hora_actual:
+            continue
+        tours_reserva_directa.setdefault(salida.tour, []).append(salida)
 
     tours_con_salidas = {}
     destino_seleccionado = None
@@ -1638,18 +1766,21 @@ def secretaria_reservar(request):
                 SalidaTour.objects.filter(
                     tour__destino=destino_seleccionado,
                     fecha=fecha,
-                    cupos_disponibles__gte=personas,
+                    cupos_disponibles__gt=0,
                 )
                 .select_related("tour", "tour__destino")
                 .order_by("tour__nombre", "hora")
             )
             for salida in salidas:
                 tours_con_salidas.setdefault(salida.tour, []).append(salida)
-
+            # Si hay búsqueda activa, el formulario "IR A RESERVAR"
+            # solo debe mostrar horarios de ese día buscado.
+            tours_reserva_directa = tours_con_salidas
     if request.method == "POST":
         salida_id = request.POST.get("salida_id")
         adultos = _parse_int(request.POST.get("adultos"))
         ninos = _parse_int(request.POST.get("ninos"))
+        edades_ninos_raw = request.POST.getlist("edades_ninos")
         nombre = (request.POST.get("nombre") or "").strip()
         apellidos = (request.POST.get("apellidos") or "").strip()
         correo = (request.POST.get("correo") or "").strip().lower()
@@ -1668,7 +1799,22 @@ def secretaria_reservar(request):
             messages.error(request, "Completa todos los datos del cliente.")
             return redirect("secretaria_reservar")
 
-        total_pagar = (adultos * salida.tour.precio_adulto_final()) + (ninos * salida.tour.precio_nino_final())
+        edades_ninos = []
+        if ninos > 0:
+            if len(edades_ninos_raw) != ninos:
+                messages.error(request, "Debes ingresar la edad de cada nino.")
+                return redirect("secretaria_reservar")
+            try:
+                edades_ninos = [int(v) for v in edades_ninos_raw]
+            except (TypeError, ValueError):
+                messages.error(request, "Debes ingresar edades validas para los ninos.")
+                return redirect("secretaria_reservar")
+            if any(edad < 0 for edad in edades_ninos):
+                messages.error(request, "La edad del nino no puede ser negativa.")
+                return redirect("secretaria_reservar")
+
+        total_ninos = sum(_precio_nino_por_edad(edad) for edad in edades_ninos)
+        total_pagar = (adultos * salida.tour.precio_adulto_final()) + total_ninos
         reserva = Reserva.objects.create(
             usuario=None,
             salida=salida,
@@ -1696,10 +1842,14 @@ def secretaria_reservar(request):
         {
             "destinos": destinos,
             "tours_con_salidas": tours_con_salidas,
+            "todos_los_tours": todos_los_tours,
+            "tours_reserva_directa": tours_reserva_directa,
             "destino_id": destino_id,
             "fecha_busqueda": fecha,
-            "personas": personas,
             "destino_seleccionado": destino_seleccionado,
+            "child_price_0_2": str(CHILD_PRICE_0_2),
+            "child_price_3_5": str(CHILD_PRICE_3_5),
+            "child_price_normal": str(CHILD_PRICE_NORMAL),
         },
     )
 
@@ -1800,4 +1950,27 @@ def eliminar_secretaria(request, user_id):
 
     secretaria.delete()
     messages.success(request, f"Secretaria '{secretaria.username}' eliminada definitivamente.")
+    return redirect("admin_secretarias")
+
+
+@login_required
+@user_passes_test(es_admin)
+def reset_secretaria_password(request, user_id):
+    if request.method != "POST":
+        return redirect("admin_secretarias")
+
+    group_secretaria = Group.objects.filter(name="secretaria").first()
+    secretaria = get_object_or_404(User, id=user_id)
+    if not group_secretaria or not secretaria.groups.filter(id=group_secretaria.id).exists():
+        messages.error(request, "El usuario seleccionado no pertenece al rol secretaria.")
+        return redirect("admin_secretarias")
+
+    new_password = (request.POST.get("new_password") or "").strip()
+    if len(new_password) < 8:
+        messages.error(request, "La nueva contraseña debe tener mínimo 8 caracteres.")
+        return redirect("admin_secretarias")
+
+    secretaria.set_password(new_password)
+    secretaria.save(update_fields=["password"])
+    messages.success(request, f"Contraseña actualizada para '{secretaria.username}'.")
     return redirect("admin_secretarias")
